@@ -9,4 +9,4 @@ But perhaps the most compelling reason to remaster the game is that the storylin
 
 The old Allegro game engine in TLC works well but is difficult to deal with if any changes are needed. The game took a very long time to debug and finish because of Allegro. Granted, it was faster to adopt than DirectX, and cross-platform was a major consideration at the dawn of the project. This was a mistake. We should have used DirectX from the start. Going with Pygame eliminates the problem of updates. A python-based game will run on all kinds of different hardware. 
 
-We need to start from scratch. There's no "upgrading from C++ to Python" here. The game will be rebuild from the ground up with Python.
+We need to start from scratch. There's no "upgrading from C++ to Python" here. The game will be rebuilt from the ground up with Python.
