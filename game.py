@@ -13,14 +13,11 @@ Requires:
 """
 
 import sys, time, random, math, pygame, pygame_gui
-from pygame.locals import *
-from MyLibrary import *
-from ship import Ship
-
 from pygame.locals import (
     K_UP,K_DOWN,K_LEFT,K_RIGHT,K_ESCAPE,K_RETURN,K_SPACE,KEYDOWN,QUIT,
     K_a,K_s,K_d,K_f
 )
+from Engine import *
 
 #
 # all globals must be pre-defined
@@ -32,7 +29,7 @@ SCREENH=1024
 backbuffer=None
 fontl=None
 fonts=None
-ship=None
+playership=Sprite()
 
 C_GRAY=(200,200,200)
 
@@ -41,10 +38,11 @@ guiwin_debug=None
 guitxt_debug=None
 guibtn_test=None
 
-#
-# Initialization (be sure to call get_video_info() first)
-#
-def init_game():
+
+"""
+Game Initialization
+"""
+def game_init():
     global screen, backbuffer, SCREENW, SCREENH
     global fontl, fonts, timer
     global ship
@@ -56,7 +54,7 @@ def init_game():
     screen = pygame.display.set_mode(size= (SCREENW,SCREENH))
     #pygame.display.toggle_fullscreen()
 
-    title = "Starflight - The Lost Colony (Remastered)"
+    title = "Starflight: The Lost Colony (Remastered)"
     pygame.display.set_caption(title + " (" + str(SCREENW) + "x" + str(SCREENH)+ ")")
     print("\n" + title)
     
@@ -81,6 +79,11 @@ def init_game():
 
     timer = pygame.time.Clock()
 
+    #load game assets
+    playership = Sprite()
+    playership.load("Player_Ship_Merc.png")
+
+    
 
 #
 # Initialize the GUI
@@ -136,23 +139,51 @@ def print_debug_info(target):
     
     s += "Mouse: " + str(x) + "," + str(y) 
     s += "<br>"
-    #print_text(backbuffer, fonts, debugx, debugy, s, C_GRAY)
+    print_text(backbuffer, fonts, debugx, debugy, s, C_GRAY)
 
     guitxt_debug.html_text = s
     guitxt_debug.rebuild()
 
+
+"""
+Main update for gameplay
+"""
+def game_update(surf, time_delta):
+    global fontl,fonts
+    global playership
+
+    print_text(surf, fontl, 100, 100, "this is a test")
+
+    playership.position = (100,200)
+    playership.update(time_delta)
+    playership.draw(surf)
+       
+    
+def rot_center(image, rect, angle):
+    """rotate an image while keeping its center"""
+    rot_image = pygame.transform.rotate(image, angle)
+    rot_rect = rot_image.get_rect(center=rect.center)
+    return rot_image,rot_rect
+    
 
 """ 
 -----------------------------------------------
 MAIN ENGINE LOOP
 -----------------------------------------------
 """
-init_game()
+game_init()
 init_gui()
 game_over = False
 last_time = 0
 inputdelay = 0
 clock = pygame.time.Clock()
+
+
+ship = pygame.image.load("Player_Ship_Science.png").convert_alpha()
+rect = ship.get_rect()
+rect.x = 500
+rect.y = 300
+angle = 1
 
 #main loop
 while True:
@@ -189,14 +220,20 @@ while True:
     gui.update(time_delta)
     
     #clear the background
-    backbuffer.fill((20,20,20))
+    backbuffer.fill((60,60,60))
+
+
+    angle = wrap_angle(angle+5)
+    rot_image,rot_rect = rot_center(ship, rect, angle)
+    backbuffer.blit(rot_image, rot_rect)
     
-    #ship.draw(backbuffer)
+
+    
+    game_update(backbuffer, time_delta)
    
     print_debug_info(backbuffer)
     
     gui.draw_ui(backbuffer)
-
 
     #draw the back buffer
     screen.blit(backbuffer, (0,0))
@@ -204,6 +241,4 @@ while True:
     pygame.display.update()
     
 pygame.quit()
-
-
 
