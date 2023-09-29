@@ -15,7 +15,6 @@ Requires:
 import sys, time, random, math, pygame, pygame_gui
 from pygame.locals import *
 from MyLibrary import *
-from hexmap import Hexmap
 from ship import Ship
 
 from pygame.locals import (
@@ -26,53 +25,63 @@ from pygame.locals import (
 #
 # all globals must be pre-defined
 #
-SCREENW=0
-SCREENH=0
 running=False
 screen=None
+SCREENW=1600
+SCREENH=1024
+backbuffer=None
 fontl=None
 fonts=None
-hexmap=None
 ship=None
 
 C_GRAY=(200,200,200)
 
 gui=None
 guiwin_debug=None
-guiwin_ship=None
-guiimg_ship=None
 guitxt_debug=None
-guibtn_debug_labels=None
+guibtn_test=None
 
 #
 # Initialization (be sure to call get_video_info() first)
 #
 def init_game():
-    global screen, backbuffer, fontl, fonts, timer
-    global hexmap, ship
+    global screen, backbuffer, SCREENW, SCREENH
+    global fontl, fonts, timer
+    global ship
 
     pygame.init()
-    get_video_info()
 
-    title = "Starflight - The Lost Colony - Remastered"
-    pygame.display.set_caption(title + " (" + str(SCREENW) + "x" + str(SCREENH)+ ")")
+    SCREENW,SCREENH = 1280,1024 #2560,1440
 
-    screen = pygame.display.set_mode(size=(SCREENW,SCREENH))
+    screen = pygame.display.set_mode(size= (SCREENW,SCREENH))
     #pygame.display.toggle_fullscreen()
+
+    title = "Starflight - The Lost Colony (Remastered)"
+    pygame.display.set_caption(title + " (" + str(SCREENW) + "x" + str(SCREENH)+ ")")
+    print("\n" + title)
     
+    w,h = screen.get_width(), screen.get_height()
+    print("Screen: " + str(w) + "/" + str(h))
+
+    print("Display modes:")
+    modes=pygame.display.list_modes(depth=0, flags=0, display=0)
+    t=""
+    for m in modes:
+        if m[1] > 700:
+            t += str(m[0]) + "/" + str(m[1]) + ", "
+    print(t)
+
     backbuffer = pygame.Surface((SCREENW,SCREENH))
     
-    timer = pygame.time.Clock()
-
     #this avoids slow font scaling (add more if needed)
     fontl = pygame.font.SysFont('arial', size=24, bold=True)
     fonts = pygame.font.SysFont('arial', size=16, bold=False)
 
     pygame.mouse.set_visible(True)
 
-    hexmap = Hexmap()
-    hexmap.init(80)
-    
+    timer = pygame.time.Clock()
+
+
 #
 # Initialize the GUI
 #
@@ -82,7 +91,7 @@ def init_gui():
     global guiwin_ship
     global guiimg_ship
     global guitxt_debug
-    global guibtn_debug_labels
+    global guibtn_test
     
     gui = pygame_gui.UIManager((SCREENW,SCREENH))
 
@@ -102,45 +111,14 @@ def init_gui():
         container=guiwin_debug,
         manager=gui
     )
-    guibtn_debug_labels = pygame_gui.elements.UIButton(
+    guibtn_test = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((125, 200), (120, 40)), 
-        text='Labels On', 
+        text='Test Message', 
         container=guiwin_debug,
         manager=gui
     )
     
-
-
-
-#
-# Get display settings
-#
-def get_video_info():
-    global SCREENW
-    global SCREENH
-
-    info=pygame.display.Info()
-    print("Display: " + str(info.current_w) + "," + str(info.current_h) + "," + str(info.bitsize))
     
-    print("Desktop modes:")
-    sizes=pygame.display.get_desktop_sizes()
-    t=""
-    for s in sizes: 
-        t += str(s) + ", "
-    print(t)
-
-    print("Display modes:")
-    modes=pygame.display.list_modes(depth=0, flags=pygame.FULLSCREEN, display=0)
-    t=""
-    for m in modes:
-        #ignore oversize modes > desktop
-        if (m[0] <= info.current_w and m[1] <= info.current_h):
-            t += ""+ str(m[0]) + "x" + str(m[1]) + ","
-    print(t)
-
-    SCREENW=1280
-    SCREENH=1024
-
 #
 #
 #
@@ -151,9 +129,6 @@ def print_debug_info(target):
     debugy=SCREENH-100
     nl=16
 
-    if guibtn_debug_labels.text == "Labels On":
-        hexmap.draw_labels(target, fonts)
-    
     s = ""
     
     mouse = pygame.mouse.get_pos()
@@ -163,24 +138,14 @@ def print_debug_info(target):
     s += "<br>"
     #print_text(backbuffer, fonts, debugx, debugy, s, C_GRAY)
 
-    index,center = hexmap.get_hex_at(mouse)
-    posx,posy = center
-    indx,indy = index
-    #hex-grid 'Y' starts at 1 instead of 0 (based on the FASA hex map)
-    s += "Hex: " + str(indx)+"," + str(indy+1) + " at " + str((posx,posy))
-    s += "<br>"
-
     guitxt_debug.html_text = s
     guitxt_debug.rebuild()
 
 
-    if indx>-1:
-        hexmap.draw_hex(target, (255,0,0), radius=80, position=center, width=8)
-        
-
-
-"""
-main engine start       
+""" 
+-----------------------------------------------
+MAIN ENGINE LOOP
+-----------------------------------------------
 """
 init_game()
 init_gui()
@@ -207,20 +172,19 @@ while True:
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
         
             #debug labels toggle
-            if event.ui_element == guibtn_debug_labels:
-                if guibtn_debug_labels.text=='Labels On':
-                    guibtn_debug_labels.set_text('Labels Off')
-                else:
-                    guibtn_debug_labels.set_text('Labels On')
+            if event.ui_element == guibtn_test:
+                msgbox = pygame_gui.windows.ui_message_window.UIMessageWindow(
+                    rect=pygame.Rect((500,500),(200,160)),
+                    html_message="This is a message test",
+                    manager=gui,
+                    window_title="Message Test"
+                )
 
     #handle input events
     pressed_keys = pygame.key.get_pressed()
     if pygame.time.get_ticks() > inputdelay + 100:
         inputdelay = pygame.time.get_ticks()
         
-        #if pressed_keys[K_UP]:
-            #ship.rect.centery -= hexmap.hexsize*2
-
     #let the GUI perform updates
     gui.update(time_delta)
     
@@ -241,11 +205,5 @@ while True:
     
 pygame.quit()
 
-"""
-msgbox = pygame_gui.windows.ui_message_window.UIMessageWindow(
-    rect=pygame.Rect((500,500),(200,160)),
-    html_message="Debug circles toggled",
-    manager=gui,
-    window_title="Debug Toggle"
-)
-"""
+
+
