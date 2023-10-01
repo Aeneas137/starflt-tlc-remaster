@@ -1,14 +1,8 @@
 """
-Starflight - The Lost Colony - Remastered
+Starflight: The Lost Colony (Remastered)
 
-Requires:
-    Python 3.10
-    pygame 2.1
-        pip install pygame
-        https://www.pygame.org/docs/index.html
-    pygame_gui 
-        pip install pygame_gui -U
-        https://pygame-gui.readthedocs.io/en/latest/modules.html
+Requires Python 3.10
+See Engine.py for dependent libraries
         
 """
 
@@ -19,9 +13,9 @@ from pygame.locals import (
 )
 from Engine import *
 
-#
-# all globals must be pre-defined
-#
+"""
+all globals must be pre-defined
+"""
 running=False
 screen=None
 SCREENW=1600
@@ -29,7 +23,6 @@ SCREENH=1024
 backbuffer=None
 fontl=None
 fonts=None
-playership=Sprite()
 
 C_GRAY=(200,200,200)
 
@@ -39,10 +32,11 @@ guitxt_debug=None
 guibtn_test=None
 
 
-"""
-Game Initialization
-"""
 def game_init():
+    """
+    Game engine initialization
+    in a future update each module will have its own engine calls for init, update, draw
+    """
     global screen, backbuffer, SCREENW, SCREENH
     global fontl, fonts, timer
     global ship
@@ -80,15 +74,14 @@ def game_init():
     timer = pygame.time.Clock()
 
     #load game assets
-    playership = Sprite()
-    playership.load("Player_Ship_Merc.png")
+
 
     
-
-#
-# Initialize the GUI
-#
-def init_gui():
+def game_gui_init():
+    """
+    Initialize the GUI - generic for now
+    A gui sub-class will be needed that works nicely with the engine with update/draw methods and a common theme
+    """
     global gui
     global guiwin_debug
     global guiwin_ship
@@ -122,10 +115,10 @@ def init_gui():
     )
     
     
-#
-#
-#
 def print_debug_info(target):
+    """ 
+    display helpful information during development 
+    """
     global fonts
     
     debugx=SCREENW-200
@@ -139,28 +132,26 @@ def print_debug_info(target):
     
     s += "Mouse: " + str(x) + "," + str(y) 
     s += "<br>"
-    print_text(backbuffer, fonts, debugx, debugy, s, C_GRAY)
+    print_text(backbuffer, fonts, (debugx,debugy), s, C_GRAY)
 
     guitxt_debug.html_text = s
     guitxt_debug.rebuild()
 
 
-"""
-Main update for gameplay
-"""
 def game_update(surf, time_delta):
+    """
+    Main engine gameplay timed updates
+    in a future update each module will have its own engine calls for init, update, draw
+    """
     global fontl,fonts
     global playership
+    #do nothing yet
 
-    print_text(surf, fontl, 100, 100, "this is a test")
-
-    playership.position = (100,200)
-    playership.update(time_delta)
-    playership.draw(surf)
-       
     
 def rot_center(image, rect, angle):
-    """rotate an image while keeping its center"""
+    """
+    rotate an image from its center
+    """
     rot_image = pygame.transform.rotate(image, angle)
     rot_rect = rot_image.get_rect(center=rect.center)
     return rot_image,rot_rect
@@ -168,28 +159,50 @@ def rot_center(image, rect, angle):
 
 """ 
 -----------------------------------------------
-MAIN ENGINE LOOP
+ENGINE MAIN LOOP
 -----------------------------------------------
 """
 game_init()
-init_gui()
+game_gui_init()
 game_over = False
 last_time = 0
 inputdelay = 0
 clock = pygame.time.Clock()
 
+star = Sprite()
+star.load_image("is_tiles.png")
+star.init_animation(128,128,5)
+star.firstFrame = 1
+star.lastFrame = 8
+star.position = (10,10)
+star.DebugMode = True
+star.DebugColor = (60,60,255)
 
-ship = pygame.image.load("Player_Ship_Science.png").convert_alpha()
-rect = ship.get_rect()
-rect.x = 500
-rect.y = 300
+planet = Sprite()
+planet.load_image("ip_tiles.png")
+planet.init_animation(256,256,9)
+planet.firstFrame = 1
+planet.lastFrame = 8
+planet.position = (10,170)
+planet.DebugMode = True
+planet.DebugColor = (255,200,100)
+
+srship = Sprite()
+srship.load_image("Player_Ship_Military.png")
+srship.init_animation()
+srship.position = (10,470)
+srship.DebugMode = True
+srship.DebugColor = (60,60,60)
+scale = 1.0
+sdir = 1.0
 angle = 1
+
 
 #main loop
 while True:
     timer.tick(30)
     ticks = pygame.time.get_ticks()
-    time_delta = clock.tick(60)/1000.0
+    timeDelta = clock.tick(60)/1000.0
 
     for event in pygame.event.get():
         if event.type == QUIT: sys.exit()
@@ -213,23 +226,40 @@ while True:
 
     #handle input events
     pressed_keys = pygame.key.get_pressed()
-    if pygame.time.get_ticks() > inputdelay + 100:
-        inputdelay = pygame.time.get_ticks()
+    if ticks > inputdelay + 100:
+        inputdelay = ticks
         
     #let the GUI perform updates
-    gui.update(time_delta)
+    gui.update(timeDelta)
     
     #clear the background
     backbuffer.fill((60,60,60))
 
 
-    angle = wrap_angle(angle+5)
-    rot_image,rot_rect = rot_center(ship, rect, angle)
-    backbuffer.blit(rot_image, rot_rect)
-    
+    #run some tests
+
+    planet.update(250)
+    planet.draw(backbuffer)
+    (x,y) = planet.position
+    y += planet.frameHeight
+    print_text(backbuffer, fonts, (x,y), str(planet))
+
+
+    star.update(500)
+    star.draw(backbuffer)
+    (x,y) = star.position
+    y += star.frameHeight
+    print_text(backbuffer, fonts, (x,y), str(star))
+
+
+    angle = wrap_angle(angle+1)
+    scale += 0.025 * sdir
+    if scale > 1.0 or scale < 0.01: sdir *= -1
+    srship.draw_scale_rotate(backbuffer, scale, angle, True)
 
     
-    game_update(backbuffer, time_delta)
+    
+    game_update(backbuffer, timeDelta)
    
     print_debug_info(backbuffer)
     
