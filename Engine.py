@@ -120,8 +120,10 @@ class Sprite(pygame.sprite.Sprite):
         self.moveAngle = 0.0
 
         #transform properties
-        self.temp_scale_img = pygame.Surface((0,0))
-        self.temp_rot_image = pygame.Surface((0,0))
+        self.scaled_image = pygame.Surface((0,0))
+        self.rotated_image = pygame.Surface((0,0))
+        self.last_scale = 0.0
+        self.last_rotation = 0.0
 
         #animation properties
         self.animColumns = 1
@@ -140,6 +142,7 @@ class Sprite(pygame.sprite.Sprite):
         self.lastTime = 0
 
         #counters/triggers
+        """
         self.delayX = 0
         self.delayY = 0
         self.countX = 0
@@ -150,6 +153,7 @@ class Sprite(pygame.sprite.Sprite):
         self.threshold1 = 0
         self.threshold2 = 0
         self.threshold3 = 0
+        """
 
     #x property
     def _getx(self): return self.position[0]
@@ -253,74 +257,122 @@ class Sprite(pygame.sprite.Sprite):
             pygame.draw.rect(dest_surface, self.DebugColor, rect, 1)
 
 
-    def draw_rotate(self, dest_surface, deg_angle):
+    def rotate(self, deg_angle):
         """
-        Draw the sprite with rotation based on an angle in degrees
+        Create an image containing the sprite rotated to an angle
         Note: Rectangle is centered so it works best if image is square
         """
-        self.temp_rot_image = pygame.transform.rotate(self.image, deg_angle)
-        c_rect = self.temp_rot_image.get_rect(center=self.rect.center)
+        if self.image==None: return 
 
+        self.last_rotation = deg_angle 
+
+        self.rotated_image = pygame.transform.rotate(self.image, deg_angle)
+
+
+    def draw_rotated_image(self, dest_surface):
+        """
+        Draw the image previously created by rotate()
+        """
+        if self.rotated_image==None: return
+
+        c_rect = self.rotated_image.get_rect(center=self.rect.center)
         r = self.image.get_rect()
         x = self.x + c_rect.x
         y = self.y + c_rect.y
 
-        dest_surface.blit(self.temp_rot_image, (x,y))
+        dest_surface.blit(self.rotated_image, (x,y))
 
         if self.DebugMode == True:
             rect = (self.x, self.y, self.rect.width, self.rect.height)
             pygame.draw.rect(dest_surface, self.DebugColor, rect, 1)
 
 
-    def draw_scale(self, dest_surface, percent_scale, use_smoothscale=False):
+    def scale(self, percent_scale, use_smoothscale=False):
         """
-        Draw the sprite with scaling based on float percentage 
+        Create an image containing the sprite scaled by a percentage 
         Note: scaled position remains at the top-left
         """
+        if self.image==None: return
+
+        self.last_scale = percent_scale
+
         sw = self.frameWidth * percent_scale 
         sh = self.frameHeight * percent_scale 
 
         if use_smoothscale:
-            self.temp_scale_img = pygame.transform.smoothscale(self.image, (sw,sh))            
+            self.scaled_image = pygame.transform.smoothscale(self.image, (sw,sh))            
         else:
-            self.temp_scale_img = pygame.transform.scale(self.image, (sw,sh))
+            self.scaled_image = pygame.transform.scale(self.image, (sw,sh))
         
-        dest_surface.blit(self.temp_scale_img, self.position)
+
+    def draw_scaled_image(self, dest_surface):
+        """
+        Draw the image previously created by scale()
+        """
+        if self.scaled_image==None: return 
+
+        dest_surface.blit(self.scaled_image, self.position)
 
         if self.DebugMode == True:
-            rw = self.rect.width * percent_scale
-            rh = self.rect.height * percent_scale
+            rw = self.rect.width 
+            rh = self.rect.height
             rect = (self.x, self.y, rw, rh)
             pygame.draw.rect(dest_surface, self.DebugColor, rect, 1)
 
 
-    def draw_scale_rotate(self, dest_surface, percent_scale, deg_angle, use_smoothscale=False):
+    def scale_rotate(self, percent_scale, deg_angle, use_smoothscale=False):
         """
         Draw the sprite with scaling and rotation by combining the transforms
         """
-        self.temp_scale_img = None
-        self.temp_rot_image = None
+        if self.image==None: return 
+
+        self.last_rotation = deg_angle
+        self.last_scale = percent_scale
+
+        self.scaled_image = None
+        self.rotated_image = None
         sw = self.frameWidth * percent_scale 
         sh = self.frameHeight * percent_scale 
 
         if use_smoothscale:
-            self.temp_scale_img = pygame.transform.smoothscale(self.image, (sw,sh))
+            self.scaled_image = pygame.transform.smoothscale(self.image, (sw,sh))
         else:
-            self.temp_scale_img = pygame.transform.scale(self.image, (sw,sh))
+            self.scaled_image = pygame.transform.scale(self.image, (sw,sh))
 
-        self.temp_rot_image = pygame.transform.rotate(self.temp_scale_img, deg_angle)
-        c_rect = self.temp_rot_image.get_rect(center=self.temp_scale_img.get_rect().center)
+        self.rotated_image = pygame.transform.rotate(self.scaled_image, deg_angle)
+
+
+
+    def draw_scaled_rotated_image(self, dest_surface):
+        """
+        Draw the sprite with scaling and rotation by combining the transforms
+        """
+        if self.scaled_image==None: return 
+        if self.rotated_image==None: return 
+
+        c_rect = self.rotated_image.get_rect(center=self.scaled_image.get_rect().center)
         x = self.x + c_rect.x
         y = self.y + c_rect.y
-        dest_surface.blit(self.temp_rot_image, (x,y))
+
+        dest_surface.blit(self.rotated_image, (x,y))
+
+        #need to add debug bounding rect here...
+        #if self.DebugMode == True:
 
 
-
+    #build a debug string containing sprite details
     def __str__(self):
-        return "frame:" + str(self.currentFrame) + " (" + str(self.firstFrame) + "-" + str(self.lastFrame) + ")," + \
-            "size:(" + str(self.frameWidth) + "," + str(self.frameHeight) + "),cols:" + str(self.animColumns) 
-
-
+        s=""
+        if self.lastFrame>0:
+            s += "fr:" + str(self.currentFrame) + "(" + str(self.firstFrame) + "-" + str(self.lastFrame) + ") "
+        s+= "" + str(self.frameWidth) + "/" + str(self.frameHeight) + " "
+        if self.animColumns > 1:
+            s+= "co:" + str(self.animColumns) + " "
+        if self.last_scale > 0.0:
+            s+= "sc:" + str('{:03.1f}'.format(self.last_scale)) + " "
+        if self.last_rotation > 0.0:
+            s+= "ro:" + str('{:05.1f}'.format(self.last_rotation))
+        return s 
 
 
 """
