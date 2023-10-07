@@ -253,6 +253,7 @@ clock = pygame.time.Clock()
 ENGINE INIT END
 """
 
+
 """ 
 GAMEPLAY INIT
 """
@@ -301,6 +302,26 @@ for y in range(20):
         s += str( ts.getTile(x,y) )+","
     print(s)
     s=""
+
+
+
+
+print("Testing pixels...")
+surf = pygame.Surface((100,100)).convert()
+surf.fill((255,0,0))
+
+s=""
+for x in range(10):
+    pixel = surf.get_at((x,0))
+    r,g,b,a = pixel[0],pixel[1],pixel[2],pixel[3]
+    print( str((r,g,b,a)))
+
+from pygame import gfxdraw 
+gfxdraw.pixel(surf, 10, 10, (0,0,255))
+gfxdraw.circle(surf, 50, 50, 30, (0,0,255))
+
+
+
 
 """ 
 GAMEPLAY INIT END
@@ -392,6 +413,8 @@ while True:
 
     #run some tests
 
+    backbuffer.blit(surf, (500,500))
+
     #star sprite test
     if star.alive:
         star.update(300)
@@ -408,8 +431,8 @@ while True:
     #ship transforms test
     if srship.alive:
         angle = Engine.wrap_angle(angle+1)
-        scale += 0.025 * sdir
-        if scale > 1.0 or scale < 0.01: sdir *= -1
+        scale += 0.0001 * sdir
+        if scale > 1.0 or scale < 0.5: sdir *= -1
         srship.update(100)
 
         srship.scale_rotate(scale, angle, True)
