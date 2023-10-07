@@ -11,7 +11,9 @@ from pygame.locals import (
     K_UP,K_DOWN,K_LEFT,K_RIGHT,K_ESCAPE,K_RETURN,K_SPACE,KEYDOWN,QUIT,
     K_a,K_s,K_d,K_f
 )
-from Engine import *
+import Engine
+import TileScroller
+
 
 """
 all globals must be pre-defined
@@ -45,6 +47,7 @@ def game_init():
 
     SCREENW,SCREENH = 1280,1024 #2560,1440
 
+    #create the screen object used to render the backbuffer
     screen = pygame.display.set_mode(size= (SCREENW,SCREENH))
     #pygame.display.toggle_fullscreen()
 
@@ -63,6 +66,7 @@ def game_init():
             t += str(m[0]) + "/" + str(m[1]) + ", "
     print(t)
 
+    #create the backbuffer used for all rendering
     backbuffer = pygame.Surface((SCREENW,SCREENH))
     
     #this avoids slow font scaling (add more if needed)
@@ -132,7 +136,6 @@ def print_debug_info(target):
     
     s += "Mouse: " + str(x) + "," + str(y) 
     s += "<br>"
-    print_text(backbuffer, fonts, (debugx,debugy), s, C_GRAY)
 
     guitxt_debug.html_text = s
     guitxt_debug.rebuild()
@@ -148,14 +151,6 @@ def game_update(surf, time_delta):
     #do nothing yet
 
     
-def rot_center(image, rect, angle):
-    """
-    rotate an image from its center
-    """
-    rot_image = pygame.transform.rotate(image, angle)
-    rot_rect = rot_image.get_rect(center=rect.center)
-    return rot_image,rot_rect
-    
 
 """ 
 -----------------------------------------------
@@ -169,7 +164,7 @@ last_time = 0
 inputdelay = 0
 clock = pygame.time.Clock()
 
-star = Sprite()
+star = Engine.Sprite()
 star.load_image("is_tiles.png")
 star.init_animation(128,128,5)
 star.firstFrame = 1
@@ -178,7 +173,7 @@ star.position = (10,10)
 star.DebugMode = True
 star.DebugColor = (60,60,255)
 
-planet = Sprite()
+planet = Engine.Sprite()
 planet.load_image("ip_tiles.png")
 planet.init_animation(256,256,9)
 planet.firstFrame = 1
@@ -187,7 +182,7 @@ planet.position = (10,170)
 planet.DebugMode = True
 planet.DebugColor = (255,200,100)
 
-srship = Sprite()
+srship = Engine.Sprite()
 srship.load_image("Player_Ship_Military.png")
 srship.init_animation()
 srship.position = (10,470)
@@ -196,6 +191,22 @@ srship.DebugColor = (60,60,60)
 scale = 1.0
 sdir = 1.0
 angle = 1
+
+
+ts = TileScroller.TileScroller(64,64,100,100)
+ts.createScrollBuffer(1000,1000)
+ts.loadTilemapSourceImage("groundtiles.png", 11)
+
+print("")
+s = ""
+t=0
+for y in range(10):
+    t += 1
+    for x in range(10):
+        ts.setTile(x,y,t)
+        s += str( ts.getTile(x,y) )+","
+    print(s)
+    s=""
 
 
 #main loop
@@ -242,22 +253,26 @@ while True:
     planet.draw(backbuffer)
     (x,y) = planet.position
     y += planet.frameHeight
-    print_text(backbuffer, fonts, (x,y), str(planet))
+    Engine.print_text(backbuffer, fonts, (x,y), str(planet))
 
 
     star.update(500)
     star.draw(backbuffer)
     (x,y) = star.position
     y += star.frameHeight
-    print_text(backbuffer, fonts, (x,y), str(star))
+    Engine.print_text(backbuffer, fonts, (x,y), str(star))
 
 
-    angle = wrap_angle(angle+1)
+    angle = Engine.wrap_angle(angle+1)
     scale += 0.025 * sdir
     if scale > 1.0 or scale < 0.01: sdir *= -1
     srship.draw_scale_rotate(backbuffer, scale, angle, True)
 
     
+    ts.updateScrollBuffer()
+    ts.drawScrollWindow(backbuffer, 600, 20, 500, 500)
+
+
     
     game_update(backbuffer, timeDelta)
    

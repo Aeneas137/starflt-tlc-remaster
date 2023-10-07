@@ -1,6 +1,8 @@
 """
 Starflight: The Lost Colony (Remastered)
 
+ENGINE CODE
+
 Requires Python 3.10
 Dependencies:
     pygame 2.1
