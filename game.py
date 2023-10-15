@@ -15,20 +15,28 @@ from pygame.locals import (
     K_UP,K_DOWN,K_LEFT,K_RIGHT,K_ESCAPE,K_RETURN,K_SPACE,KEYDOWN,QUIT,
     K_a,K_s,K_d,K_f
 )
+from pygame import gfxdraw 
 import Engine
 import TileScroller
-
+from enum import Enum
+import NoiseUtils 
+from PIL import Image 
 
 """
 all globals must be pre-defined
 """
 C_GRAY=(200,200,200)
 
+noise = None 
+pixels = None
+imageSize = 512
+
 running=False
 screen=None
 backbuffer=None
 fontl=None
 fonts=None
+fontt=None
 
 gui=None
 guiwin_debug=None
@@ -61,6 +69,7 @@ def game_init():
     global screen, backbuffer, SCREENW, SCREENH
     global fontl, fonts, timer
     global ship
+    global noise, pixels 
 
     pygame.init()
 
@@ -89,12 +98,26 @@ def game_init():
     backbuffer = pygame.Surface((SCREENW,SCREENH))
     
     #this avoids slow font scaling (add more if needed)
-    fontl = pygame.font.SysFont('arial', size=24, bold=True)
-    fonts = pygame.font.SysFont('arial', size=16, bold=False)
+    fontl = pygame.font.SysFont("arial", size=24, bold=True)
+    fonts = pygame.font.SysFont("arial", size=16, bold=False)
+    fontt = pygame.font.SysFont("arial", size=8, bold=False)
 
     pygame.mouse.set_visible(True)
 
     timer = pygame.time.Clock()
+
+
+    #create perlin noise texture
+    noise = NoiseUtils.NoiseUtils(imageSize)
+    noise.makeTexture(texture = noise.planetTexture)
+
+    img = Image.new("L", (imageSize, imageSize))
+    pixels = img.load()
+    for i in range(0, imageSize):
+       for j in range(0, imageSize):
+            c = noise.img[i, j]
+            pixels[i, j] = c
+    #img.save("temp.png")
 
     #load game assets
 
@@ -307,19 +330,26 @@ for y in range(20):
 
 
 print("Testing pixels...")
-surf = pygame.Surface((100,100)).convert()
-surf.fill((255,0,0))
+surf = pygame.Surface((imageSize,imageSize)).convert()
+surf.fill((255,255,255))
 
 s=""
-for x in range(10):
-    pixel = surf.get_at((x,0))
-    r,g,b,a = pixel[0],pixel[1],pixel[2],pixel[3]
-    print( str((r,g,b,a)))
+for y in range(imageSize):
+    for x in range(imageSize):
+        pixel = surf.get_at((x,y))
+        #r,g,b,a = pixel[0],pixel[1],pixel[2],pixel[3]
+        c = (noise.img[x, y] % 256)
+        surf.set_at((x,y), (c,c,c))
 
-from pygame import gfxdraw 
-gfxdraw.pixel(surf, 10, 10, (0,0,255))
-gfxdraw.circle(surf, 50, 50, 30, (0,0,255))
+#gfxdraw.pixel(surf, 10, 10, (0,0,255))
+#gfxdraw.circle(surf, 50, 50, 30, (0,0,255))
 
+"""
+for i in range(0, imageSize):
+    for j in range(0, imageSize):
+        c = noise.img[i, j]
+        pixels[i, j] = c
+"""           
 
 
 
@@ -413,8 +443,6 @@ while True:
 
     #run some tests
 
-    backbuffer.blit(surf, (500,500))
-
     #star sprite test
     if star.alive:
         star.update(300)
@@ -441,7 +469,6 @@ while True:
         guilbl_sprite3.set_text( str(srship) )
 
 
-
     #test the tile scroller
     sx = scrollspeedx * scrolldirx
     if not ts.scroll(sx,0):
@@ -452,9 +479,13 @@ while True:
         scrolldiry *= -1
 
     ts.updateScrollBuffer()
-    ts.drawScrollWindow(backbuffer, 600, 20, 800, 800)
+    ts.drawScrollWindow(backbuffer, 750, 20, 800, 800)
     pos = (ts.scrollx,ts.scrolly)
     add_debug_text("ts: " + str(ts) )
+
+
+    #draw Perlin generated texture
+    backbuffer.blit(surf, (470,500))
 
 
 

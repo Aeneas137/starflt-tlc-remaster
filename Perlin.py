@@ -1,14 +1,34 @@
 """
 STARFLIGHT: THE LOST COLONY (Remastered)
+
+perlin-noise planet texture generator
+
 """
 
+from enum import Enum
+from perlin_noise import PerlinNoise
+
+class PlanetType(Enum):
+   PT_INVALID = 0
+   PT_ASTEROID = 1
+   PT_ROCKY = 2
+   PT_FROZEN = 3
+   PT_OCEANIC = 4
+   PT_MOLTEN = 5
+   PT_GASGIANT = 6
+   PT_ACIDIC = 7
+PlanetType = Enum('PlanetType', ['Invalid','Asteroid','Rocky','Frozen','Oceanic','Molten','Gas Giant','Acidic'])
+
+
+def createPlanetSurface(width:int, height:int, randomness:int, planet_type:PlanetType, filename:str):
+    if planet_type==PlanetType.PT_OCEANIC:
+        #whatever
+        a=1
+    perlin = PerlinNoise()
+    perlin.octaves = 6
+    perlin.octaves.imag 
 
 """
-void createPlanetSurface(int width, int height, int randomness, PlanetType planet_type, std::string filename)
-{
-    createPlanetSurface(width,height,randomness,planet_type,filename.c_str());
-}
-
 void createPlanetSurface(int width, int height, int randomness, PlanetType planet_type, const char *filename)
 {
    module::Perlin perlin;
@@ -64,23 +84,16 @@ void createPlanetSurface(int width, int height, int randomness, PlanetType plane
          break;
 
 	case PT_ACIDIC: 
-		//renderer.AddGradientPoint (-1.0000, utils::Color (120, 0, 120, 255)); // deeps
-		//renderer.AddGradientPoint (-0.2500, utils::Color (175, 0, 175, 255)); // shallow
-		//renderer.AddGradientPoint ( 0.0000, utils::Color (220, 0, 220, 255)); // shore
-		renderer.AddGradientPoint (-1.0000, utils::Color (0, 115, 27, 255)); // acid
-		renderer.AddGradientPoint (-0.2500, utils::Color (0, 255, 0, 255)); // shallow
-		renderer.AddGradientPoint ( 0.0000, utils::Color (60, 240, 135, 255)); // shore
-		//renderer.AddGradientPoint ( 0.0625, utils::Color (180, 180, 60, 255)); // sand
-        renderer.AddGradientPoint ( 0.1250, utils::Color (155, 50, 80, 255)); // grass
-        //renderer.AddGradientPoint ( 0.3750, utils::Color (180, 180, 0, 255)); // dirt
-        renderer.AddGradientPoint ( 0.7500, utils::Color (30, 30, 100, 255)); // rock
-        renderer.AddGradientPoint ( 1.0000, utils::Color (60, 50, 115, 255)); // snow
-        break;
+   		renderer.AddGradientPoint (-1.0000, utils::Color (0, 115, 27, 255)); // acid
+	   	renderer.AddGradientPoint (-0.2500, utils::Color (0, 255, 0, 255)); // shallow
+		   renderer.AddGradientPoint ( 0.0000, utils::Color (60, 240, 135, 255)); // shore
+         renderer.AddGradientPoint ( 0.1250, utils::Color (155, 50, 80, 255)); // grass
+         renderer.AddGradientPoint ( 0.7500, utils::Color (30, 30, 100, 255)); // rock
+         renderer.AddGradientPoint ( 1.0000, utils::Color (60, 50, 115, 255)); // snow
+         break;
 
       case PT_FROZEN:
-       //  renderer.AddGradientPoint (-1.0000, utils::Color (130, 130, 150, 255)); // deeps
-		//   renderer.AddGradientPoint (-0.2500, utils::Color (140, 140, 150, 255)); // shallow
-		 renderer.AddGradientPoint (-1.0000, utils::Color (65, 65, 150, 255)); // deeps
+   		renderer.AddGradientPoint (-1.0000, utils::Color (65, 65, 150, 255)); // deeps
          renderer.AddGradientPoint (-0.2500, utils::Color (100, 100, 150, 255)); // shallow
          renderer.AddGradientPoint ( 0.0000, utils::Color (150, 150, 150, 255)); // shore
          renderer.AddGradientPoint ( 0.0625, utils::Color (160, 160, 160, 255)); // sand
