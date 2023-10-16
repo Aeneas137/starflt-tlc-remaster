@@ -8,18 +8,6 @@ perlin-noise planet texture generator
 from enum import Enum
 from perlin_noise import PerlinNoise
 
-class PlanetType(Enum):
-   PT_INVALID = 0
-   PT_ASTEROID = 1
-   PT_ROCKY = 2
-   PT_FROZEN = 3
-   PT_OCEANIC = 4
-   PT_MOLTEN = 5
-   PT_GASGIANT = 6
-   PT_ACIDIC = 7
-PlanetType = Enum('PlanetType', ['Invalid','Asteroid','Rocky','Frozen','Oceanic','Molten','Gas Giant','Acidic'])
-
-
 def createPlanetSurface(width:int, height:int, randomness:int, planet_type:PlanetType, filename:str):
     if planet_type==PlanetType.PT_OCEANIC:
         #whatever

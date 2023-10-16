@@ -1,9 +1,9 @@
 """
 Starflight: The Lost Colony (Remastered)
 
-ENGINE CODE
+ENGINE-LEVEL CODE
 
-Requires Python 3.10
+Requires Python 3.10+
 Dependencies:
     pygame 2.1
         pip install pygame
@@ -13,6 +13,8 @@ Dependencies:
         https://pygame-gui.readthedocs.io/en/latest/modules.html
     perlin-noise
         pip install perlin-noise
+    Pillow 10.1.0
+        pip install Pillow
 
     use pip list to see your installed libraries
 

@@ -1,23 +1,208 @@
-/*
-	STARFLIGHT - THE LOST COLONY
-	DataMgr.cpp - ?
-	Author: Dave "coder1024" Calkins
-	Date: 01/22/2007
-*/
 
-#include "env.h"
-#include <allegro.h>
-#include <alfont.h>
-#include "DataMgr.h"
-#include "tinyxml/tinyxml.h"
-#include "Archive.h"
-#include "Util.h"
-#include "GameState.h"
-#include "Game.h"
-#include <cstdarg>
-#include "QuestMgr.h"
 
-using namespace std;
+
+"""
+#define MAX_FLUX 2000
+typedef std::list<Flux*>::iterator flux_iter;
+
+// item types
+typedef enum
+{
+   IT_INVALID = 0,
+   IT_ARTIFACT = 1,
+   IT_RUIN = 2,
+   IT_MINERAL = 4,
+   IT_LIFEFORM = 8,
+   IT_TRADEITEM = 16
+} ItemType;
+
+// item age
+typedef enum
+{
+   IA_INVALID = 0,
+   IA_STONE,
+   IA_METAL,
+   IA_INDUSTRIAL,
+   IA_SPACEFARING
+} ItemAge;
+
+// an item
+class Item
+{
+public:
+
+   Item();
+   Item(const Item& rhs);
+   virtual ~Item();
+   Item& operator=(const Item& rhs);
+
+   void Reset();
+
+   bool IsArtifact() {return itemType == IT_ARTIFACT;};
+   bool IsMineral()  {return itemType == IT_MINERAL;};
+   bool IsLifeForm() {return itemType == IT_LIFEFORM;};
+
+   ID id;                   // the ID of this item
+   ItemType itemType;       // the type of item
+   std::string name;        // the name
+   double value;            // value
+   double size;             // size (m^3)
+   double speed;            // speed
+   double danger;           // danger
+   double damage;           // damage
+   ItemAge itemAge;         // age
+   bool shipRepairMetal;    // is this a ship repair metal?
+   bool blackMarketItem;    // is this a blackmarket item?
+   std::string portrait;    //This refers to the image file
+
+   //for Artifact items these properties are used:
+   int planetid;
+   int x;
+   int y;
+
+   //additional properties for Ruins:
+   std::string description;
+
+   // helper methods for working with the enumerated types
+   static ItemType ItemTypeFromString(std::string s);
+   static std::string ItemTypeToString(ItemType itemType);
+   static ItemAge ItemAgeFromString(std::string s);
+   static std::string ItemAgeToString(ItemAge itemAge);
+};
+
+// used to represent a collection of items; the collection is comprised of
+// stacks of items; for example, 100 cans of root beer, 3 slim jims, etc; you can request
+// the # of stacks, and then iterate over all the stacks; each stack returns
+// to you the item and the quantity in that stack
+class Items
+{
+public:
+   Items();
+   Items(const Items& rhs);
+   virtual ~Items();
+   Items& operator=(const Items& rhs);
+
+   void Reset();
+   bool Serialize(Archive& ar);
+
+   /**
+    * initializes this object to contain a random collection of items.
+    * @param maxNumStacks # of stacks will not exceed this value
+    * @param maxNumItemsPerStack # of items in any stack will not exceed this value
+    * @param typeFilter if provided, only items of the specified type mask will be generated
+    */
+   void RandomPopulate(int maxNumStacks, int maxNumItemsPerStack, ItemType typeFilter = IT_INVALID);
+
+   /**
+    * returns the number of stacks, each stack contains a set of a single item type
+    */
+   int GetNumStacks();
+
+   /**
+    * returns a single stack of items - the item info and the number of that item in the stack
+    */
+   void GetStack(int idx, Item& item, int& numItemsInStack);
+
+   /**
+    * add the specified quantity of the item ID to this object; the item(s) will be
+    * added to the stack of that item type if already present.
+    */
+   void AddItems(ID id, int numItemsToAdd);
+
+   /**
+	* this function should be called before any item is added to the inventory!
+	* returns true if it finds space for the list of items, and false if it doesn't.
+	* the ellipse takes in the item ids of each item to be added
+    */
+	bool CheckForSpace(int spaceLimit, ... );
+	bool CheckForSpace(int spaceLimit, int totalSentIDs, int itemIDs[] );
+
+
+
+   /**
+    * remove the specified quantity of the item ID from this object; the stack of this
+    * item type will be decremented by the specified amount; it will not go below zero.
+    */
+   void RemoveItems(ID id, int numItemsToRemove);
+
+   /**
+    * sets the # of the specified item to the value provided, overwriting the existing
+    * value if the item is already present or adding it if not.
+    */
+   void SetItemCount(ID id, int numItems);
+
+	/**
+    * scan the vector for the item with the given id value and set the item placeholder to the item matching that id
+    */
+   void Get_Item_By_ID(int id, Item& item, int &num_in_stack);
+
+   void Get_Item_By_Name(std::string name, Item& item, int &num_in_stack);
+
+
+private:
+   std::vector<std::pair<ID,int> > stacks; // holds the stacks (each stack is a set of one item type)
+};
+
+
+class DataMgr
+{
+public:
+
+   // don't create new instances of this class, use the instance provided in the Module class
+   DataMgr();
+   virtual ~DataMgr();
+
+   // only called once at game initialization to load in all the data and prepare it for access
+   // shouldn't need to call this.
+   bool Initialize();
+
+   // used to access available items; memory is owned by this class; you should not delete
+   // any returned objects
+   int GetNumItems();
+   Item* GetItem(int idx);			// by index [0..N)
+   Item* GetItemByID(ID id);		// by ID
+   Item* GetItem(std::string name); // by name
+
+   // used to access the available stars; memory is owned by this class; you should not delete
+   // any returned objects
+   int GetNumStars();
+   Star* GetStar(int idx); // by index [0...N)
+   Star* GetStarByID(ID id); // by ID
+   Star* GetStarByLocation(CoordValue x, CoordValue y); // by location
+
+   //this version does not require a star parent class
+   std::vector<Planet*> allPlanets;
+   std::map<ID,Planet*> allPlanetsByID;
+   Planet *GetPlanetByID(ID id);
+
+   int GetNumHumanNames();
+   std::string GetFullName(int id);
+   std::string GetFirstName(int id);
+   std::string GetLastName(int id);
+   std::string GetRandWholeName();
+   std::string GetRandMixedName();
+
+  //this should have only be needed during testing
+   //Officer* GetRandOfficer(int type);
+   std::list<Flux*> flux;
+
+
+private:
+   bool m_initialized;
+   bool LoadItems();
+   bool LoadGalaxy();
+   bool LoadHumanNames();
+
+   std::vector<Item*> items;
+   std::map<ID,Item*> itemsByID;
+   std::vector<Star*> stars;
+   std::map<ID,Star*> starsByID;
+   std::map<std::pair<CoordValue,CoordValue>,Star*> starsByLocation;
+   std::vector<std::pair<std::string*,std::string*>*> humanNames;
+
+};
+
+
 
 #define ITEMS_FILE "data/strfltitems.xml"
 #define GALAXY_FILE "data/galaxy.xml"
@@ -185,592 +370,7 @@ std::string Item::ItemAgeToString(ItemAge itemAge)
    return result;
 }
 
-Star::Star()
-: id(-1)
-, name("")
-, x(0)
-, y(0)
-, spectralClass(SC_INVALID)
-, color("")
-, temperature(0)
-, mass(1)
-, radius(1)
-, luminosity(1)
-{
-}
 
-Star::Star(const Star &rhs)
-{
-   *this = rhs;
-}
-
-Star & Star::operator=(const Star &rhs)
-{
-   id = rhs.id;
-   name = rhs.name;
-   x = rhs.x;
-   y = rhs.y;
-   spectralClass = rhs.spectralClass;
-   color = rhs.color;
-   temperature = rhs.temperature;
-   mass = rhs.mass;
-   radius = rhs.radius;
-   luminosity = rhs.luminosity;
-
-   return *this;
-}
-
-Star::~Star()
-{
-   for (vector<Planet*>::iterator i = planets.begin(); i != planets.end(); ++i)
-   {
-      delete (*i);
-   }
-}
-
-int Star::GetNumPlanets()
-{
-   return (int)planets.size();
-}
-
-Planet * Star::GetPlanet(int idx)
-{
-   Planet * result = NULL;
-
-   if ((idx >= 0) && (idx < (int)planets.size()))
-   {
-      result = planets[idx];
-   }
-
-   return result;
-}
-
-Planet * Star::GetPlanetByID(ID id)
-{
-   Planet * result = NULL;
-
-   map<ID,Planet*>::iterator i = planetsByID.find(id);
-   if (i != planetsByID.end())
-   {
-      result = i->second;
-   }
-
-   return result;
-}
-
-SpectralClass Star::SpectralClassFromString(string s)
-{
-   SpectralClass result = SC_INVALID;
-
-   if (s == "M")
-   {
-      result = SC_M;
-   }
-   else if (s == "K")
-   {
-      result = SC_K;
-   }
-   else if (s == "G")
-   {
-      result = SC_G;
-   }
-   else if (s == "F")
-   {
-      result = SC_F;
-   }
-   else if (s == "A")
-   {
-      result = SC_A;
-   }
-   else if (s == "B")
-   {
-      result = SC_B;
-   }
-   else if (s == "O")
-   {
-      result = SC_O;
-   }
-
-   return result;
-}
-
-string Star::SpectralClassToString(SpectralClass spectralClass)
-{
-   string result;
-
-   switch (spectralClass)
-   {
-   case SC_M:
-      result = "M";
-      break;
-   case SC_K:
-      result = "K";
-      break;
-   case SC_G:
-      result = "G";
-      break;
-   case SC_F:
-      result = "F";
-      break;
-   case SC_A:
-      result = "A";
-      break;
-   case SC_B:
-      result = "B";
-      break;
-   case SC_O:
-      result = "O";
-      break;
-   default:
-      result = "INVALID";
-      break;
-   }
-
-   return result;
-}
-
-Planet::Planet()
-: id(-1)
-, hostStarID(-1)
-, name("")
-, size(PS_INVALID)
-, type(PT_INVALID)
-, color("")
-, temperature(PTMP_INVALID)
-, gravity(PG_INVALID)
-, atmosphere(PA_INVALID)
-, weather(PW_INVALID)
-{
-}
-
-Planet::Planet(const Planet &rhs)
-{
-   *this = rhs;
-}
-
-Planet::~Planet()
-{
-}
-
-Planet & Planet::operator=(const Planet &rhs)
-{
-   id = rhs.id;
-   hostStarID = rhs.hostStarID;
-   name = rhs.name;
-   size = rhs.size;
-   type = rhs.type;
-   color = rhs.color;
-   temperature = rhs.temperature;
-   gravity = rhs.gravity;
-   atmosphere = rhs.atmosphere;
-   weather = rhs.weather;
-   landable = rhs.landable;
-
-   return *this;
-}
-
-PlanetSize Planet::PlanetSizeFromString(std::string size)
-{
-   PlanetSize result = PS_INVALID;
-
-   if (size == "SMALL")
-   {
-      result = PS_SMALL;
-   }
-   else if (size == "MEDIUM")
-   {
-      result = PS_MEDIUM;
-   }
-   else if (size == "LARGE")
-   {
-      result = PS_LARGE;
-   }
-   else if (size == "HUGE")
-   {
-      result = PS_HUGE;
-   }
-
-   return result;
-}
-
-string Planet::PlanetSizeToString(PlanetSize size)
-{
-   string result;
-
-   switch (size)
-   {
-   case PS_SMALL:
-      result = "SMALL";
-      break;
-
-   case PS_MEDIUM:
-      result = "MEDIUM";
-      break;
-
-   case PS_LARGE:
-      result = "LARGE";
-      break;
-
-   case PS_HUGE:
-      result = "HUGE";
-      break;
-
-   default:
-      result = "INVALID";
-   }
-
-   return result;
-}
-
-PlanetType Planet::PlanetTypeFromString(std::string type)
-{
-   PlanetType result = PT_INVALID;
-
-   if (type == "ASTEROID")
-   {
-      result = PT_ASTEROID;
-   }
-   else if (type == "ROCKY")
-   {
-      result = PT_ROCKY;
-   }
-   else if (type == "FROZEN")
-   {
-      result = PT_FROZEN;
-   }
-   else if (type == "OCEANIC")
-   {
-      result = PT_OCEANIC;
-   }
-   else if (type == "MOLTEN")
-   {
-      result = PT_MOLTEN;
-   }
-   else if (type == "GAS GIANT")
-   {
-      result = PT_GASGIANT;
-   }
-   else if (type == "ACIDIC")
-   {
-      result = PT_ACIDIC;
-   }
-
-   return result;
-}
-
-string Planet::PlanetTypeToString(PlanetType type)
-{
-   string result;
-
-   switch (type)
-   {
-   case PT_ASTEROID:
-      result = "ASTEROID";
-      break;
-
-   case PT_ROCKY:
-      result = "ROCKY";
-      break;
-
-   case PT_FROZEN:
-      result = "FROZEN";
-      break;
-
-   case PT_OCEANIC:
-      result = "OCEANIC";
-      break;
-
-   case PT_MOLTEN:
-      result = "MOLTEN";
-      break;
-
-   case PT_GASGIANT:
-      result = "GAS GIANT";
-      break;
-
-   case PT_ACIDIC:
-      result = "ACIDIC";
-      break;
-
-   default:
-      result = "INVALID";
-      break;
-   }
-
-   return result;
-}
-
-PlanetTemperature Planet::PlanetTemperatureFromString(std::string temperature)
-{
-   PlanetTemperature result = PTMP_INVALID;
-
-   if (temperature == "SUBARCTIC" || temperature == "SUB-ARCTIC")
-   {
-      result = PTMP_SUBARCTIC;
-   }
-   else if (temperature == "ARCTIC")
-   {
-      result = PTMP_ARCTIC;
-   }
-   else if (temperature == "TEMPERATE")
-   {
-      result = PTMP_TEMPERATE;
-   }
-   else if (temperature == "TROPICAL")
-   {
-      result = PTMP_TROPICAL;
-   }
-   else if (temperature == "SEARING")
-   {
-      result = PTMP_SEARING;
-   }
-   else if (temperature == "INFERNO")
-   {
-      result = PTMP_INFERNO;
-   }
-
-   return result;
-}
-
-string Planet::PlanetTemperatureToString(PlanetTemperature temperature)
-{
-   string result;
-
-   switch (temperature)
-   {
-   case PTMP_SUBARCTIC:
-      result = "SUBARCTIC";
-      break;
-
-   case PTMP_ARCTIC:
-      result = "ARCTIC";
-      break;
-
-   case PTMP_TEMPERATE:
-      result = "TEMPERATE";
-      break;
-
-   case PTMP_TROPICAL:
-      result = "TROPICAL";
-      break;
-
-   case PTMP_SEARING:
-      result = "SEARING";
-      break;
-
-   case PTMP_INFERNO:
-      result = "INFERNO";
-      break;
-
-   default:
-      result = "INVALID";
-      break;
-   }
-
-   return result;
-}
-
-PlanetGravity Planet::PlanetGravityFromString(std::string gravity)
-{
-   PlanetGravity result = PG_INVALID;
-
-   if (gravity == "NEGLIGIBLE")
-   {
-      result = PG_NEGLIGIBLE;
-   }
-   else if (gravity == "VERY LOW")
-   {
-      result = PG_VERYLOW;
-   }
-   else if (gravity == "LOW")
-   {
-      result = PG_LOW;
-   }
-   else if (gravity == "OPTIMAL")
-   {
-      result = PG_OPTIMAL;
-   }
-   else if (gravity == "VERY HEAVY")
-   {
-      result = PG_VERYHEAVY;
-   }
-   else if (gravity == "CRUSHING")
-   {
-      result = PG_CRUSHING;
-   }
-
-   return result;
-}
-
-string Planet::PlanetGravityToString(PlanetGravity gravity)
-{
-   string result;
-
-   switch (gravity)
-   {
-   case PG_NEGLIGIBLE:
-      result = "NEGLIGIBLE";
-      break;
-
-   case PG_VERYLOW:
-      result = "VERY LOW";
-      break;
-
-   case PG_LOW:
-      result = "LOW";
-      break;
-
-   case PG_OPTIMAL:
-      result = "OPTIMAL";
-      break;
-
-   case PG_VERYHEAVY:
-      result = "VERY HEAVY";
-      break;
-
-   case PG_CRUSHING:
-      result = "CRUSHING";
-      break;
-
-   default:
-      result = "INVALID";
-      break;
-   }
-
-   return result;
-}
-
-PlanetAtmosphere Planet::PlanetAtmosphereFromString(std::string atmosphere)
-{
-   PlanetAtmosphere result = PA_INVALID;
-
-   if (atmosphere == "NONE")
-   {
-      result = PA_NONE;
-   }
-   else if (atmosphere == "TRACEGASES" || atmosphere == "TRACE GASES")
-   {
-      result = PA_TRACEGASES;
-   }
-   else if (atmosphere == "BREATHABLE")
-   {
-      result = PA_BREATHABLE;
-   }
-   else if (atmosphere == "ACIDIC")
-   {
-      result = PA_ACIDIC;
-   }
-   else if (atmosphere == "TOXIC")
-   {
-      result = PA_TOXIC;
-   }
-   else if (atmosphere == "FIRESTORM")
-   {
-      result = PA_FIRESTORM;
-   }
-
-   return result;
-}
-
-string Planet::PlanetAtmosphereToString(PlanetAtmosphere atmosphere)
-{
-   string result;
-
-   switch (atmosphere)
-   {
-   case PA_NONE:
-      result = "NONE";
-      break;
-
-   case PA_TRACEGASES:
-      result = "TRACEGASES";
-      break;
-
-   case PA_BREATHABLE:
-      result = "BREATHABLE";
-      break;
-
-   case PA_ACIDIC:
-      result = "ACIDIC";
-      break;
-
-   case PA_TOXIC:
-      result = "TOXIC";
-      break;
-
-   case PA_FIRESTORM:
-      result = "FIRESTORM";
-      break;
-
-   default:
-      result = "INVALID";
-      break;
-   }
-
-   return result;
-}
-
-PlanetWeather Planet::PlanetWeatherFromString(std::string weather)
-{
-   PlanetWeather result = PW_INVALID;
-
-   if (weather == "NONE")
-   {
-      result = PW_NONE;
-   }
-   else if (weather == "CALM")
-   {
-      result = PW_CALM;
-   }
-   else if (weather == "MODERATE")
-   {
-      result = PW_MODERATE;
-   }
-   else if (weather == "VIOLENT")
-   {
-      result = PW_VIOLENT;
-   }
-   else if (weather == "VERYVIOLENT")
-   {
-      result = PW_VERYVIOLENT;
-   }
-
-   return result;
-}
-
-string Planet::PlanetWeatherToString(PlanetWeather weather)
-{
-   string result;
-
-   switch (weather)
-   {
-   case PW_NONE:
-      result = "NONE";
-      break;
-
-   case PW_CALM:
-      result = "CALM";
-      break;
-
-   case PW_MODERATE:
-      result = "MODERATE";
-      break;
-
-   case PW_VIOLENT:
-      result = "VIOLENT";
-      break;
-
-   case PW_VERYVIOLENT:
-      result = "VERYVIOLENT";
-      break;
-
-   default:
-      result = "INVALID";
-      break;
-   }
-
-   return result;
-}
 
 DataMgr::DataMgr()
 : m_initialized(false)
@@ -1100,225 +700,6 @@ bool DataMgr::LoadItems()
       }
 
       item = item->NextSiblingElement("item");
-   }
-
-   return true;
-}
-
-bool DataMgr::LoadGalaxy()
-{
-
-   TiXmlDocument doc(GALAXY_FILE);
-   if (!doc.LoadFile())
-      return false;
-
-   TiXmlElement * galaxy = doc.FirstChildElement("galaxy");
-   if (galaxy == NULL)
-      return false;
-
-   // load all stars first, since the planets reference them
-   TiXmlElement * star = galaxy->FirstChildElement("star");
-   while (star != NULL)
-   {
-      Star newStar;
-      TiXmlHandle starHandle(star);
-
-      TiXmlText * text;
-
-      text = starHandle.FirstChild("id").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.id = atoi(text->Value());
-      }
-
-      text = starHandle.FirstChild("name").FirstChild().Text();
-      if (text == NULL)
-         newStar.name = "";
-      else
-         newStar.name = text->Value();
-
-      text = starHandle.FirstChild("x").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.x = atoi(text->Value());
-      }
-
-      text = starHandle.FirstChild("y").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.y = atoi(text->Value());
-      }
-
-      text = starHandle.FirstChild("spectralclass").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.spectralClass = Star::SpectralClassFromString(text->Value());
-      }
-
-      text = starHandle.FirstChild("color").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.color = text->Value();
-      }
-
-      text = starHandle.FirstChild("temperature").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.temperature = atol(text->Value());
-      }
-
-      text = starHandle.FirstChild("mass").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.mass = atol(text->Value());
-      }
-
-      text = starHandle.FirstChild("radius").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.radius = atol(text->Value());
-      }
-
-      text = starHandle.FirstChild("luminosity").FirstChild().Text();
-      if (text != NULL)
-      {
-         newStar.luminosity = atol(text->Value());
-      }
-
-      // make sure a star with this ID doesn't already exist
-      Star * existingStar = GetStarByID(newStar.id);
-      if (existingStar == NULL)
-      {
-         // add the star
-         Star * toAdd = new Star(newStar);
-         stars.push_back(toAdd);
-         starsByID[newStar.id] = toAdd;
-         starsByLocation[make_pair(newStar.x,newStar.y)] = toAdd;
-      }
-
-      star = star->NextSiblingElement("star");
-   }
-
-   // now load all planets
-   TiXmlElement * planet = galaxy->FirstChildElement("planet");
-   while (planet != NULL)
-   {
-      Planet newPlanet;
-      TiXmlHandle planetHandle(planet);
-
-      TiXmlText * text;
-
-      text = planetHandle.FirstChild("id").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.id = atoi(text->Value());
-      }
-
-      text = planetHandle.FirstChild("hoststar").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.hostStarID = atoi(text->Value());
-      }
-
-      text = planetHandle.FirstChild("name").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.name = text->Value();
-      }
-
-      text = planetHandle.FirstChild("size").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.size = Planet::PlanetSizeFromString(text->Value());
-      }
-
-      text = planetHandle.FirstChild("type").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.type = Planet::PlanetTypeFromString(text->Value());
-      }
-
-      text = planetHandle.FirstChild("color").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.color = text->Value();
-      }
-
-      text = planetHandle.FirstChild("temperature").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.temperature = Planet::PlanetTemperatureFromString(text->Value());
-      }
-
-      text = planetHandle.FirstChild("gravity").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.gravity = Planet::PlanetGravityFromString(text->Value());
-      }
-
-      text = planetHandle.FirstChild("atmosphere").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.atmosphere = Planet::PlanetAtmosphereFromString(text->Value());
-      }
-
-      text = planetHandle.FirstChild("weather").FirstChild().Text();
-      if (text != NULL)
-      {
-         newPlanet.weather = Planet::PlanetWeatherFromString(text->Value());
-      }
-
-	  //added to prevent landing on homeworlds
-	  newPlanet.landable = true;
-	  text = planetHandle.FirstChild("landable").FirstChild().Text();
-	  if (text != NULL) {
-		  string str = Util::ToString(text->Value());
-		  //all planets are landable unless otherwise specified in galaxy data
-		  if (str == "false") newPlanet.landable = false;
-	  }
-
-		//sanity checks
-		if ( newPlanet.size        == PS_INVALID   ||
-			 newPlanet.type        == PT_INVALID   ||
-			 newPlanet.temperature == PTMP_INVALID ||
-			 newPlanet.gravity     == PG_INVALID   ||
-			 newPlanet.atmosphere  == PA_INVALID )
-		{
-				std::string msg = "loadGalaxy: error loading planet #" + newPlanet.id;
-				msg += " , name -- " + newPlanet.name + " --";
-				msg += " , size " + Planet::PlanetSizeToString(newPlanet.size);
-				msg += " , type " + Planet::PlanetTypeToString(newPlanet.type);
-				msg += " , temperature " + Planet::PlanetTemperatureToString(newPlanet.temperature);
-				msg += " , gravity " + Planet::PlanetGravityToString(newPlanet.gravity);
-				msg += " , atmosphere " + Planet::PlanetAtmosphereToString(newPlanet.atmosphere);
-				msg += "\n";
-				TRACE(msg.c_str());
-				ASSERT(0);
-		}
-
-      // make sure the host star does exist
-      Star * hostStar = GetStarByID(newPlanet.hostStarID);
-      if (hostStar != NULL)
-      {
-         // make sure a planet with this ID doesn't already exist in the host star
-         Planet * existingPlanet = hostStar->GetPlanetByID(newPlanet.id);
-         if (existingPlanet == NULL)
-         {
-            // add the planet to the host star
-            Planet * toAdd = new Planet(newPlanet);
-            hostStar->planets.push_back(toAdd);
-            hostStar->planetsByID[newPlanet.id] = toAdd;
-         }
-      }
-
-
-    // add to the large list of all planets (not bound by host star)
-    Planet * toAdd = new Planet(newPlanet);
-    allPlanets.push_back(toAdd);
-    allPlanetsByID[newPlanet.id] = toAdd;
-
-
-      planet = planet->NextSiblingElement("planet");
    }
 
    return true;
@@ -1697,3 +1078,6 @@ void Items::Get_Item_By_Name(std::string name, Item& item, int &num_in_stack){
    }
    item = *pItem;
 }
+
+
+"""

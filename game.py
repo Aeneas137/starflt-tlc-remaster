@@ -21,6 +21,7 @@ import TileScroller
 from enum import Enum
 import NoiseUtils 
 from PIL import Image 
+import Galaxy 
 
 """
 all globals must be pre-defined
@@ -29,7 +30,7 @@ C_GRAY=(200,200,200)
 
 noise = None 
 pixels = None
-imageSize = 512
+imageSize = 256
 
 running=False
 screen=None
@@ -105,6 +106,20 @@ def game_init():
     pygame.mouse.set_visible(True)
 
     timer = pygame.time.Clock()
+
+
+    #test the galaxy loader
+    galaxy = Galaxy.Galaxy()
+    res = galaxy.Load("galaxy.xml")
+    if res==False:
+        print("Error loading galaxy data")
+        sys.exit()
+
+    print("Galaxy data loaded: " +
+            "Stars: " + str(galaxy.GetTotalStars()) + ", " + 
+            "Planets: " + str(galaxy.GetTotalPlanets()))
+
+    #sys.exit()
 
 
     #create perlin noise texture
@@ -323,7 +338,7 @@ for y in range(20):
     for x in range(20):
         ts.setTile(x,y,t)
         s += str( ts.getTile(x,y) )+","
-    print(s)
+    #print(s)
     s=""
 
 
