@@ -56,6 +56,8 @@ guiwin_sprite3=None
 guiimg_sprite3=None 
 guilbl_sprite3=None 
 
+perlinSurface=None
+
 scrolldirx=1
 scrolldiry=1
 scrollspeedx=2.0
@@ -70,7 +72,7 @@ def game_init():
     global screen, backbuffer, SCREENW, SCREENH
     global fontl, fonts, timer
     global ship
-    global noise, pixels 
+    global noise, pixels, perlinSurface
 
     pygame.init()
 
@@ -101,7 +103,7 @@ def game_init():
     #this avoids slow font scaling (add more if needed)
     fontl = pygame.font.SysFont("arial", size=24, bold=True)
     fonts = pygame.font.SysFont("arial", size=16, bold=False)
-    fontt = pygame.font.SysFont("arial", size=8, bold=False)
+    fontt = pygame.font.SysFont("arial", size=12, bold=False)
 
     pygame.mouse.set_visible(True)
 
@@ -119,22 +121,23 @@ def game_init():
             "Stars: " + str(galaxy.GetTotalStars()) + ", " + 
             "Planets: " + str(galaxy.GetTotalPlanets()))
 
-    #sys.exit()
 
-
-    #create perlin noise texture
+    """
+    PERLIN TEXTURE TEST
+    """
+    #create perlin noise data for a texture
     noise = NoiseUtils.NoiseUtils(imageSize)
     noise.makeTexture(texture = noise.planetTexture)
 
-    img = Image.new("L", (imageSize, imageSize))
-    pixels = img.load()
-    for i in range(0, imageSize):
-       for j in range(0, imageSize):
-            c = noise.img[i, j]
-            pixels[i, j] = c
-    #img.save("temp.png")
+    #transfer perlin data into a Surface
+    perlinSurface = pygame.Surface((imageSize,imageSize)).convert()
+    perlinSurface.fill((255,255,255))
+    for y in range(imageSize):
+        for x in range(imageSize):
+            c = noise.img[x, y]
+            perlinSurface.set_at((x,y), (c,c,c,255))
 
-    #load game assets
+    #pygame.image.save(perlinSurface, "planet.png")
 
 
     
@@ -325,7 +328,10 @@ sdir = 1.0
 angle = 1
 
 
-#create the tile scroller
+"""
+create the tile scroller
+"""
+
 ts = TileScroller.TileScroller(128,128,40,40)
 ts.createScrollBuffer(900,900)
 ts.loadTilemapSourceImage("is_tiles.png", 5)
@@ -340,32 +346,6 @@ for y in range(20):
         s += str( ts.getTile(x,y) )+","
     #print(s)
     s=""
-
-
-
-
-print("Testing pixels...")
-surf = pygame.Surface((imageSize,imageSize)).convert()
-surf.fill((255,255,255))
-
-s=""
-for y in range(imageSize):
-    for x in range(imageSize):
-        pixel = surf.get_at((x,y))
-        #r,g,b,a = pixel[0],pixel[1],pixel[2],pixel[3]
-        c = (noise.img[x, y] % 256)
-        surf.set_at((x,y), (c,c,c))
-
-#gfxdraw.pixel(surf, 10, 10, (0,0,255))
-#gfxdraw.circle(surf, 50, 50, 30, (0,0,255))
-
-"""
-for i in range(0, imageSize):
-    for j in range(0, imageSize):
-        c = noise.img[i, j]
-        pixels[i, j] = c
-"""           
-
 
 
 """ 
@@ -500,7 +480,7 @@ while True:
 
 
     #draw Perlin generated texture
-    backbuffer.blit(surf, (470,500))
+    backbuffer.blit(perlinSurface, (470,500))
 
 
 

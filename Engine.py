@@ -28,6 +28,27 @@ PI_div_180 = 0.017453292519444
 
 
 
+"""
+RGB color class to pack colors into an integer\n
+rgb = [255,255,255]\n
+color = toint32(rgb)\n
+rgb_c = torgb(color)
+"""
+
+def rgbtoint32(self, rgb):
+    color = 0
+    for c in rgb[::-1]:
+        color = (color<<8) + c
+    return color
+
+def int32torgb(color):
+    rgb = []
+    for i in range(3):
+        rgb.append(color&0xff)
+        color = color >> 8
+    return rgb
+
+
 def distance(point1, point2):
     """ calculates distance between two points """
     delta_x = point1.x - point2.x
