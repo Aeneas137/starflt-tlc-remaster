@@ -1,11 +1,19 @@
 """
-Software textured sphere renderer 
-It's slow, drawn with pixels, but no geometry is needed.
+Software textured sphere renderer, quick ported from C++ code. 
+IT WORKS, but it's slow and not optimized and needs attention.
 
-TEX_SIZE must be <= 256 due to coord_transform_table holding shorts.
+Sphere is drawn with pixels, no geometry needed.
+
+Adapted from Allegro code posted by Plucky on allegro.cc 05/22/2002:
+https://www.allegro.cc/forums/thread/186206/186206#target
+
+Original code packed 5,6,5 into an 8-bit short int:
+"TEX_SIZE must be <= 256 due to coord_transform_table holding shorts.
 In this code, it needs to be a power of 2, but a couple of minor tweaks, 
-and this constraint can go away.
+and this constraint can go away."
 
+This should be removed from the Python code and better optimized!
+TEX_SIZE should be passable but code must be cleaned up first.
 """
 
 import sys, pygame, array, math 
@@ -14,7 +22,7 @@ from array import *
 
 """
 RGB to Int conversions:
-rgb = [32,253,200]
+rgb = [255,255,255]
 color = rgbtoint32(rgb)
 rgb_c = int32torgb(color)
 """
@@ -33,8 +41,8 @@ def int32torgb(color):
 
 class TexturedSphere:
 
-    def __init__(self, tex_size:int):
-        self.TEX_SIZE:int = tex_size 
+    def __init__(self):
+        self.TEX_SIZE:int = 256
         self.MAP_SIZE:int = 256
         self.ASPECT_RATIO:float = 1.04
         self.coord_transform_table:array = None 
@@ -42,7 +50,7 @@ class TexturedSphere:
         self.tex_table:array = None 
         self.texture:pygame.Surface = None 
 
-        #InitSphereLookupTables()
+        # initialize lookup tables
         alpha:int; beta:int   # spherical coordinates
         i:int; j:int 
         x:float; y:float; z:float # cartesian coordinates 
@@ -50,7 +58,7 @@ class TexturedSphere:
         size = self.TEX_SIZE * (self.TEX_SIZE + 1)
         self.coord_transform_table = [0 for a in range(size)]
         
-        self.screen2sphere_table = [0 for a in range( self.TEX_SIZE )]
+        self.screen2sphere_table = [0 for a in range(self.TEX_SIZE)]
         
         # compute the lookup table to convert the coordinate system
         for j in range(self.TEX_SIZE+1):
@@ -62,11 +70,11 @@ class TexturedSphere:
                 # Convert cartesian to spherical. notice that x,z,y is passed, not x,y,z
                 alpha,beta = self.Cartesian2Sphere(x, z, y)
 
-                # lower order of bits occupied by alpha, upper order shifted by TEX_SIZE occupied by beta 
+                # copy 2D coordinates into 1D array
                 # note: Python conversion does not use a malloc buffer but an array
                 self.coord_transform_table[ i + j * self.TEX_SIZE ] = alpha + beta * self.TEX_SIZE
 
-        # compute the lookup table used to convert 2D coords to spherical coords 
+        # compute the lookup table used to map texture onto sphere
         for i in range(self.TEX_SIZE):
             value = (int)(math.acos( (float)(i - self.TEX_SIZE / 2 + 1) * 2 / self.TEX_SIZE) * self.TEX_SIZE / math.pi)
             value %= self.TEX_SIZE 
@@ -79,7 +87,6 @@ class TexturedSphere:
         if self.texture==None: return False
 
         #generate the sphere texture map
-        #CreateTextureTable()
         x:int; y:int
         destj:int; desti:int = 0
         self.tex_table = [0 for a in range( self.TEX_SIZE * (self.TEX_SIZE + 1) ) ]
@@ -104,6 +111,8 @@ class TexturedSphere:
                 x = (int)( i * self.texture.get_width() / self.TEX_SIZE )
                 y = (int)( j * self.texture.get_height() / self.TEX_SIZE )
                 r,g,b,a = self.texture.get_at((x, y)) 
+                
+                #pack RGB into an integer
                 p = rgbtoint32([r,g,b])
 
                 #map pixel from 2D coords into 1D array
@@ -182,29 +191,38 @@ class TexturedSphere:
             table_index = (int)((y + radius) * self.TEX_SIZE / (2 * radius))
             beta1 = self.screen2sphere_table[table_index] * self.TEX_SIZE
 
+            # this is a remnant of C++ integer-packed optimization: is it necessary in Python?
+
             xinc = 16776960 / (2 * xr)
             xscaled = 0
         
-            # For all Pixels in this Scanline ... 
+            # For all pixels in this scanline ... 
             # previously: for(x = -xr; x < xr; x++) 
             x_index_end = xr * 2 - 1
             for x_index in range(x_index_end):
                 x = x_index - xr
             
-                # compute the second Spherical Coordinate alpha 
-                alpha1 = self.screen2sphere_table[ (int)(xscaled / 65536) ] / 2
+                # compute the second spherical coordinate alpha 
+
+                # another remnant of the C++ integer packing: alternative?
+
+                table_index = (int)(xscaled / 65536)
+
+                alpha1 = self.screen2sphere_table[ table_index ] / 2
                 xscaled += xinc
                 alpha1 = alpha1 + phi
 
-                # Rotate Texture in the first Coordinate-System (alpha,beta)
-                # Switch to the next Coordinate-System and rotate there
+                # rotate texture in the first coordinate system (alpha,beta)
+                # switch to the next coordinate system and rotate there
                 alpha_beta2 = self.coord_transform_table[ (int)(beta1 + alpha1) ] + theta
                 
-                # the same Procedure again ... 
+                # the same procedure again ... 
                 alpha_beta3 = self.coord_transform_table[alpha_beta2] + psi
-            
-                # draw the Pixel 
+
+                #pull RGB out of packed integer            
                 r,g,b = int32torgb( self.tex_table[ (int)(alpha_beta3) ] )
+
+                # draw the Pixel 
                 posxy = ((int)(centerx + x),(int)(centery + y))
                 dest.set_at( posxy, (r,g,b) )
        
@@ -240,9 +258,8 @@ if __name__ == "__main__":
     clock = pygame.time.Clock()
     fontt = pygame.font.SysFont("None", size=30, bold=False)
 
-    #image_file = 'molten.png'
-    image_file = "blue_marble_spherical.jpg"
-    sphere = TexturedSphere(256)
+    image_file = "earth.png"
+    sphere = TexturedSphere()
     if not sphere.LoadTexture(image_file): 
         print("Error loading " + image_file)
         sys.exit()
@@ -251,9 +268,9 @@ if __name__ == "__main__":
     #planet rotation 
     cx = int(SX/2)
     cy = int(SY/2)
-    planetRotationSpeed = 1.0
+    planetRotationSpeed = 2.0
     planetRotation = 0.0
-    planetRadius = 120
+    planetRadius = 128
 
     C_WHITE = (255,255,255)
     running:bool = True 
@@ -263,6 +280,9 @@ if __name__ == "__main__":
             if event.type == QUIT: sys.exit()
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE: running = False 
+                elif event.key==K_LEFT: planetRotationSpeed -= 1.0
+                elif event.key==K_RIGHT: planetRotationSpeed += 1.0
+
 
         backbuffer.fill((0,0,0))
 
