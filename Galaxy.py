@@ -276,25 +276,37 @@ class Planet:
 #endregion
 
 
+# spectral classes
+class SpectralClass(Enum):
+    INVALID = 0
+    M = 1
+    K = 2
+    G = 3
+    F = 4
+    A = 5
+    B = 6
+    O = 7
+SpectralClass = Enum('SpectralClass',['INVALID','M','K','G','F','A','B','O'])
+
+def SpectralIndex(sc:str):
+    ret = 0
+    match sc:
+        case 'M': ret = 1
+        case 'K': ret = 2
+        case 'G': ret = 3
+        case 'F': ret = 4
+        case 'A': ret = 5
+        case 'B': ret = 6
+        case 'O': ret = 7
+    return ret 
+
+
 #region "STAR CLASS"
 """
 ---------------------------------------------------------------------
 STAR CLASS
 ---------------------------------------------------------------------
 """
-
-# spectral classes
-class SpectralClass(Enum):
-    SC_INVALID = 0
-    SC_M = 1
-    SC_K = 2
-    SC_G = 3
-    SC_F = 4
-    SC_A = 5
-    SC_B = 6
-    SC_O = 7
-SpectralClass = Enum('SpectralClass',['INVALID','M','K','G','F','A','B','O'])
-
 
 class Star:
 
@@ -303,7 +315,7 @@ class Star:
         self.name:str = ""
         self.x:int = 0
         self.y:int = 0
-        #self.spectralClass:SpectralClass = SpectralClass.SC_INVALID
+        self.spectralClass:str = ""
         self.color:str = ""
         self.temperature:int = 0
         self.mass:float = 1.0
@@ -344,33 +356,6 @@ class Star:
         return self.totalPlanets
 
 
-    def SpectralClassFromString(self, spectralClass:str)->SpectralClass:
-        result:SpectralClass = SpectralClass.SC_INVALID
-        match spectralClass:
-            case "M": result = SpectralClass.SC_M
-            case "K": result = SpectralClass.SC_K
-            case "G": result = SpectralClass.SC_G
-            case "F": result = SpectralClass.SC_F
-            case "A": result = SpectralClass.SC_A
-            case "B": result = SpectralClass.SC_B
-            case "O": result = SpectralClass.SC_O
-            case _: result = SpectralClass.SC_INVALID
-        return result
-
-
-    def SpectralClassToString(self, spectralClass:SpectralClass)->str:
-        result:str = ""
-        match spectralClass:
-            case SpectralClass.SC_M: result = "M"
-            case SpectralClass.SC_K: result = "K"
-            case SpectralClass.SC_G: result = "G"
-            case SpectralClass.SC_F: result = "F"
-            case SpectralClass.SC_A: result = "A"
-            case SpectralClass.SC_B: result = "B"
-            case SpectralClass.SC_O: result = "O"
-            case _: result = "INVALID"
-        return result
-
 
 class Galaxy:
     
@@ -405,14 +390,14 @@ class Galaxy:
             star.name = child.find("name").text
             star.x = int(child.find("x").text)
             star.y = int(child.find("y").text)
-            star.spectralClass = child.find("spectralclass").text 
+            star.spectralClass = child.find("spectralclass").text
             star.color = child.find("color").text
             star.temperature = child.find("temperature").text 
             star.mass = float(child.find("mass").text)
             star.radius = float(child.find("radius").text)
             star.luminosity = float(child.find("luminosity").text)
             self.stars.append(star)
-            print(str(star))
+            #print(str(star))
 
         self.totalplanets = 0
         for child in root.findall("planet"):

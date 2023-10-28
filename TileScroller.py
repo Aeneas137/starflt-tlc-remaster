@@ -15,7 +15,7 @@ from array import *
 
 MAX = 500
 
-class TileScroller(object):
+class TileScroller():
     """
     tiledata = None
     scrollbuffer = None
@@ -264,6 +264,8 @@ class TileScroller(object):
     def __str__(self):
         s=""
         s+= str(self.scrollx) + "/" + str(self.scrolly) + " "
+        tpx,tpy = int(self.scrollx / self.tilewidth), int(self.scrolly / self.tileheight)
+        s+= " ("+ str(tpx) + "/" + str(tpy) + ") "
         s+= "tile:" + str(self.tilewidth) + "/" + str(self.tileheight) + " "
         s+= "win:"+str(self.windowwidth) + "/" + str(self.windowheight) + " "
         s+= "map:" + str(self.mapwidth) + "/" + str(self.mapheight) + " "

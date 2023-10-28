@@ -7,6 +7,8 @@ Main loop that calls gameplay methods
 
 Requires Python 3.10
 See Engine.py for dependent libraries
+
+*** THIS IS STILL IN EARLY DEV: IT WILL BE CLEANED UP! ***
         
 """
 
@@ -18,75 +20,87 @@ from pygame.locals import (
 from pygame import gfxdraw 
 import Engine
 import TileScroller
+import TexturedSphere
 from enum import Enum
 import NoiseUtils 
 from PIL import Image 
 import Galaxy 
+from Galaxy import *
 
 """
 all globals must be pre-defined
 """
 C_GRAY=(200,200,200)
 
-noise = None 
-pixels = None
-imageSize = 256
+class Globals():
+    def __init__(self):
+        self.SCREENW:int=0
+        self.SCREENH:int=0
 
-running=False
-screen=None
-backbuffer=None
-fontl=None
-fonts=None
-fontt=None
+        self.noise = None 
+        self.pixels = None
+        self.imageSize = 256
 
-gui=None
-guiwin_debug=None
-guitxt_debug=None
-guibtn_test=None
-guibtn_testsprite1=None
-guibtn_testsprite2=None
-guibtn_testsprite3=None
-guiwin_sprite1=None
-guiimg_sprite1=None
-guilbl_sprite1=None
-guiwin_sprite2=None
-guiimg_sprite2=None 
-guilbl_sprite2=None 
-guiwin_sprite3=None
-guiimg_sprite3=None 
-guilbl_sprite3=None 
+        self.running=False
+        self.screen=None
+        self.backbuffer=None
+        self.fontl=None
+        self.fonts=None
+        self.fontt=None
 
-perlinSurface=None
+        self.GALAXY_LIMIT_X = 256 #tiles
+        self.GALAXY_LIMIT_Y = 256
+        self.ts:TileScroller.TileScroller = None 
+        self.guiwin_space:pygame_gui.elements.UIWindow=None 
+        self.guitxt_space:pygame_gui.elements.UITextBox=None 
+        self.guilbl_space:pygame_gui.elements.UILabel=None
+        self.scrolldirx=1
+        self.scrolldiry=1
+        self.scrollspeedx=0.0
+        self.scrollspeedy=0.0
 
-scrolldirx=1
-scrolldiry=1
-scrollspeedx=2.0
-scrollspeedy=3.0
+        self.gui=None
+        self.guiwin_debug:pygame_gui.elements.UIWindow=None
+        self.guitxt_debug=None
+        self.guibtn_test=None
+        self.guibtn_testsprite1=None
+        self.guibtn_testsprite2=None
+        self.guibtn_testsprite3=None
+        self.guiwin_sprite1:pygame_gui.elements.UIWindow=None
+        self.guiimg_sprite1=None
+        self.guilbl_sprite1=None
+        self.guiwin_sprite2:pygame_gui.elements.UIWindow=None
+        self.guiimg_sprite2=None 
+        self.guilbl_sprite2=None 
+        self.guiwin_sprite3:pygame_gui.elements.UIWindow=None
+        self.guiimg_sprite3=None 
+        self.guilbl_sprite3=None 
+
+        self.perlinSurface=None
+
+globals:Globals = Globals()
 
 
-def game_init():
+
+def engine_init():
     """
     Game engine initialization
     in a future update each module will have its own engine calls for init, update, draw
     """
-    global screen, backbuffer, SCREENW, SCREENH
-    global fontl, fonts, timer
-    global ship
-    global noise, pixels, perlinSurface
-
     pygame.init()
 
-    SCREENW,SCREENH = 1600,1024 #2560,1440
+    globals.SCREENW = 1600 #2560
+    globals.SCREENH = 1024 #1440
 
     #create the screen object used to render the backbuffer
-    screen = pygame.display.set_mode(size= (SCREENW,SCREENH))
+    globals.screen = pygame.display.set_mode(size= (globals.SCREENW, globals.SCREENH))
     #pygame.display.toggle_fullscreen()
 
     title = "Starflight: The Lost Colony (Remastered)"
-    pygame.display.set_caption(title + " (" + str(SCREENW) + "x" + str(SCREENH)+ ")")
+    pygame.display.set_caption(title + " (" + str(globals.SCREENW) + "x" + str(globals.SCREENH)+ ")")
     print("\n" + title)
     
-    w,h = screen.get_width(), screen.get_height()
+    w,h = globals.screen.get_width(), globals.screen.get_height()
     print("Screen: " + str(w) + "/" + str(h))
 
     print("Display modes:")
@@ -98,174 +112,167 @@ def game_init():
     print(t)
 
     #create the backbuffer used for all rendering
-    backbuffer = pygame.Surface((SCREENW,SCREENH))
+    globals.backbuffer = pygame.Surface((globals.SCREENW,globals.SCREENH))
     
     #this avoids slow font scaling (add more if needed)
-    fontl = pygame.font.SysFont("arial", size=24, bold=True)
-    fonts = pygame.font.SysFont("arial", size=16, bold=False)
-    fontt = pygame.font.SysFont("arial", size=12, bold=False)
+    globals.fontl = pygame.font.SysFont("arial", size=24, bold=True)
+    globals.fonts = pygame.font.SysFont("arial", size=16, bold=False)
+    globals.fontt = pygame.font.SysFont("arial", size=12, bold=False)
 
     pygame.mouse.set_visible(True)
 
-    timer = pygame.time.Clock()
+    globals.timer = pygame.time.Clock()
 
 
-    #test the galaxy loader
-    galaxy = Galaxy.Galaxy()
-    res = galaxy.Load("galaxy.xml")
-    if res==False:
-        print("Error loading galaxy data")
-        sys.exit()
-
-    print("Galaxy data loaded: " +
-            "Stars: " + str(galaxy.GetTotalStars()) + ", " + 
-            "Planets: " + str(galaxy.GetTotalPlanets()))
-
-
+def gameplay_init():
     """
-    PERLIN TEXTURE TEST
+    Gameplay initialization 
     """
-    #create perlin noise data for a texture
-    noise = NoiseUtils.NoiseUtils(imageSize)
-    noise.makeTexture(texture = noise.planetTexture)
-
-    #transfer perlin data into a Surface
-    perlinSurface = pygame.Surface((imageSize,imageSize)).convert()
-    perlinSurface.fill((255,255,255))
-    for y in range(imageSize):
-        for x in range(imageSize):
-            c = noise.img[x, y]
-            perlinSurface.set_at((x,y), (c,c,c,255))
-
-    #pygame.image.save(perlinSurface, "planet.png")
-
-
+    a=0
+  
     
-def game_gui_init():
+def gameplay_gui_init():
     """
     Initialize the GUI - generic for now
     A gui sub-class will be needed that works nicely with the engine with update/draw methods and a common theme
     """
-    global gui, guiwin_debug, guitxt_debug, guibtn_test
-    global guiwin_sprite1, guiimg_sprite1, guilbl_sprite1, guibtn_testsprite1
-    global guiwin_sprite2, guiimg_sprite2, guilbl_sprite2, guibtn_testsprite2
-    global guiwin_sprite3, guiimg_sprite3, guilbl_sprite3, guibtn_testsprite3
-
-    gui = pygame_gui.UIManager((SCREENW,SCREENH))
+    globals.gui = pygame_gui.UIManager((globals.SCREENW,globals.SCREENH))
 
     #build the gui debug window
-    w,h = 600,300
-    x,y = SCREENW-w,SCREENH-h
-    guiwin_debug = pygame_gui.elements.UIWindow( 
+    w,h = 580,200
+    x,y = 0, globals.SCREENH-h
+    globals.guiwin_debug = pygame_gui.elements.UIWindow( 
         rect=pygame.Rect((x,y),(w,h)),
         window_display_title="DEBUG OUTPUT",
         element_id="guiwin_debug",
-        manager=gui
+        manager=globals.gui
     )
-    guitxt_debug = pygame_gui.elements.UITextBox( 
-        relative_rect=pygame.Rect((0,0),(w-10,200)),
+    globals.guitxt_debug = pygame_gui.elements.UITextBox( 
+        relative_rect=pygame.Rect((0,0),(w-10,h-100)),
         html_text="",
-        container=guiwin_debug, manager=gui
+        container=globals.guiwin_debug, manager=globals.gui
     )
     guibtn_test = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((0, 200), (120, 40)), 
+        relative_rect=pygame.Rect((0, h-100), (120, 40)), 
         text="MessageBox", 
-        container=guiwin_debug, manager=gui
+        container=globals.guiwin_debug, manager=globals.gui
     )
     guibtn_testsprite1 = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((120,200),(140,40)),
+        relative_rect=pygame.Rect((120,h-100),(140,40)),
         text="Star Sprite",
-        container=guiwin_debug, manager=gui 
+        container=globals.guiwin_debug, manager=globals.gui 
     )
     guibtn_testsprite2 = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((260,200),(140,40)),
+        relative_rect=pygame.Rect((260,h-100),(140,40)),
         text="Planet Sprite",
-        container=guiwin_debug, manager=gui
+        container=globals.guiwin_debug, manager=globals.gui
     )
     guibtn_testsprite3 = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((400,200),(140,40)),
+        relative_rect=pygame.Rect((400,h-100),(140,40)),
         text="Ship Transforms",
-        container=guiwin_debug, manager=gui
+        container=globals.guiwin_debug, manager=globals.gui
     )
 
     #build the sprite1 test window
     w,h = 260,210
     x,y = 0,0
-    guiwin_sprite1 = pygame_gui.elements.UIWindow(
+    globals.guiwin_sprite1 = pygame_gui.elements.UIWindow(
         rect=pygame.Rect((x,y),(w,h)),
         window_display_title="STAR ANIMATION",
         element_id="guiwin_sprite1",
-        manager=gui
+        manager=globals.gui
     )
-    guiwin_sprite1.disable()
+    globals.guiwin_sprite1.disable()
     #guiwin_sprite1.hide()
-    guiimg_sprite1 = pygame_gui.elements.UIImage(
+    globals.guiimg_sprite1 = pygame_gui.elements.UIImage(
         relative_rect=pygame.Rect((0,0),(w-10,h-10)),
         image_surface=pygame.Surface((w-10,h-10)),
-        container=guiwin_sprite1, manager=gui
+        container=globals.guiwin_sprite1, manager=globals.gui
     )
-    guilbl_sprite1 = pygame_gui.elements.UILabel(
+    globals.guilbl_sprite1 = pygame_gui.elements.UILabel(
         relative_rect=pygame.Rect((0,130),(-1,-1)),
         object_id="guilbl_sprite1",
         text="star animation",
-        container=guiwin_sprite1, manager=gui
+        container=globals.guiwin_sprite1, manager=globals.gui
     )
 
     #build the sprite2 test window
-    w,h = 340,340
-    x,y = 0,200
-    guiwin_sprite2 = pygame_gui.elements.UIWindow(
+    w,h = 300,340
+    x,y = 0,190
+    globals.guiwin_sprite2 = pygame_gui.elements.UIWindow(
         rect=pygame.Rect((x,y),(w,h)),
         window_display_title="PLANET ANIMATION",
         element_id="guiwin_sprite2",
-        manager=gui
+        manager=globals.gui
     )
-    guiwin_sprite2.disable()
-    guiimg_sprite2 = pygame_gui.elements.UIImage(
+    globals.guiwin_sprite2.disable()
+    globals.guiimg_sprite2 = pygame_gui.elements.UIImage(
         relative_rect=pygame.Rect((0,0),(w-10,h-10)),
         image_surface=pygame.Surface((w-10,h-10)),
-        container=guiwin_sprite2, manager=gui
+        container=globals.guiwin_sprite2, manager=globals.gui
     )
-    guilbl_sprite2 = pygame_gui.elements.UILabel(
+    globals.guilbl_sprite2 = pygame_gui.elements.UILabel(
         relative_rect=pygame.Rect((0,260),(-1,-1)),
         object_id="guilbl_sprite2",
         text="planet animation",
-        container=guiwin_sprite2, manager=gui
+        container=globals.guiwin_sprite2, manager=globals.gui
     )
 
     #build the sprite3 test window
-    w,h = 450,450
-    x,y = 0,530
-    guiwin_sprite3 = pygame_gui.elements.UIWindow(
+    w,h = 300,300
+    x,y = 0,510
+    globals.guiwin_sprite3 = pygame_gui.elements.UIWindow(
         rect=pygame.Rect((x,y),(w,h)),
         window_display_title="SHIP TRANSFORMS",
         element_id="guiwin_sprite3",
-        manager=gui
+        manager=globals.gui
     )
-    guiwin_sprite3.disable()
-    guiimg_sprite3 = pygame_gui.elements.UIImage(
+    globals.guiwin_sprite3.disable()
+    globals.guiimg_sprite3 = pygame_gui.elements.UIImage(
         relative_rect=pygame.Rect((0,0),(w-10,h-10)),
         image_surface=pygame.Surface((w-10,h-10)),
-        container=guiwin_sprite3, manager=gui
+        container=globals.guiwin_sprite3, manager=globals.gui
     )
-    guilbl_sprite3 = pygame_gui.elements.UILabel(
+    globals.guilbl_sprite3 = pygame_gui.elements.UILabel(
         relative_rect=pygame.Rect((0,370),(-1,-1)),
         object_id="guilbl_sprite3",
         text="ship transforms",
-        container=guiwin_sprite3, manager=gui
+        container=globals.guiwin_sprite3, manager=globals.gui
     )
-    
-    
+
+
+    #build the space travel test window 
+    w,h = 510,800
+    x,y = 280,0
+    globals.guiwin_space = pygame_gui.elements.UIWindow(
+        rect=pygame.Rect((x,y),(w,h)),
+        window_display_title="SPACE TRAVEL",
+        element_id="guiwin_space",
+        manager=globals.gui
+    )
+    globals.guitxt_space = pygame_gui.elements.UITextBox( 
+        relative_rect=pygame.Rect((0,0),(w-29,h-100)),
+        html_text="", 
+        container=globals.guiwin_space, manager=globals.gui
+    )    
+    globals.guilbl_space = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect((0,h-80),(-1,-1)),
+        object_id="guilbl_space",
+        text="space travel label",
+        container=globals.guiwin_space, manager=globals.gui
+    )
+
+
 def add_debug_text(text):
-    guitxt_debug.html_text += text + "<br>"
-    guitxt_debug.rebuild()
+    globals.guitxt_debug.html_text += text + "<br>"
+    globals.guitxt_debug.rebuild()
 
 def clear_debug_text(target):
     """ 
     display helpful information during development 
     """
-    guitxt_debug.html_text = ""
-    guitxt_debug.rebuild()
+    globals.guitxt_debug.html_text = ""
+    globals.guitxt_debug.rebuild()
 
 
 
@@ -274,21 +281,21 @@ def game_update(surf, time_delta):
     Main engine gameplay timed updates
     in a future update each module will have its own engine calls for init, update, draw
     """
-    global fontl,fonts
-    global playership
     #do nothing yet
+    a=0
 
     
 
 """ 
 ENGINE INIT 
 """
-game_init()
-game_gui_init()
-game_over = False
-last_time = 0
-inputdelay = 0
-clock = pygame.time.Clock()
+engine_init()
+gameplay_init()
+gameplay_gui_init()
+globals.game_over = False
+globals.last_time = 0
+globals.inputdelay = 0
+globals.clock = pygame.time.Clock()
 
 """ 
 ENGINE INIT END
@@ -299,23 +306,23 @@ ENGINE INIT END
 GAMEPLAY INIT
 """
 
-star = Engine.Sprite()
-star.load_image("is_tiles.png")
-star.init_animation(128,128,5)
-star.firstFrame = 1
-star.lastFrame = 8
-star.position = (0,0) #relative inside guiwindow
-star.DebugMode = True
-star.DebugColor = (60,60,255)
+star_sp = Engine.Sprite()
+star_sp.load_image("is_tiles.png")
+star_sp.init_animation(128,128,5)
+star_sp.firstFrame = 1
+star_sp.lastFrame = 8
+star_sp.position = (0,0) #relative inside guiwindow
+star_sp.DebugMode = True
+star_sp.DebugColor = (60,60,255)
 
-planet = Engine.Sprite()
-planet.load_image("ip_tiles.png")
-planet.init_animation(256,256,9)
-planet.firstFrame = 1
-planet.lastFrame = 8
-planet.position = (0,0) #relative inside guiwindow
-planet.DebugMode = True
-planet.DebugColor = (255,200,100)
+planet_sp = Engine.Sprite()
+planet_sp.load_image("ip_tiles.png")
+planet_sp.init_animation(256,256,9)
+planet_sp.firstFrame = 1
+planet_sp.lastFrame = 8
+planet_sp.position = (0,0) #relative inside guiwindow
+planet_sp.DebugMode = True
+planet_sp.DebugColor = (255,200,100)
 
 srship = Engine.Sprite()
 srship.load_image("Player_Ship_Military.png")
@@ -323,29 +330,85 @@ srship.init_animation()
 srship.position = (0,0) #relative inside guiwindow
 srship.DebugMode = True
 srship.DebugColor = (60,60,60)
-scale = 1.0
+scale = 0.4
 sdir = 1.0
 angle = 1
 
+
+
+"""
+test the textured sphere
+"""
+image_file = "molten.png"
+sphere = TexturedSphere.TexturedSphere()
+if not sphere.LoadTexture(image_file): 
+    print("Error loading " + image_file)
+    sys.exit()
+
+ #planet rotation 
+planetRotationSpeed = 1.0
+planetRotation = 0.0
+planetRadius = 64
+
+
+"""
+load the galaxy
+"""
+galaxy = Galaxy()
+res = galaxy.Load("galaxy.xml")
+if res==False:
+    print("Error loading galaxy data")
+    sys.exit()
+
+text = "Galaxy data loaded: " + \
+        "Stars: " + str(galaxy.GetTotalStars()) + ", " + \
+        "Planets: " + str(galaxy.GetTotalPlanets()) + "<br>"
+
+for star in galaxy.stars:
+    text += str(star) + "<br>"
+
+globals.guitxt_space.html_text += text
+globals.guitxt_space.rebuild()
 
 """
 create the tile scroller
 """
 
-ts = TileScroller.TileScroller(128,128,40,40)
-ts.createScrollBuffer(900,900)
-ts.loadTilemapSourceImage("is_tiles.png", 5)
+globals.ts = TileScroller.TileScroller(128,128,256,256)
+globals.ts.createScrollBuffer(900,900)
+globals.ts.loadTilemapSourceImage("is_tiles.png", 5)
 
-print("")
-s = ""
-t=0
-for y in range(20):
-    t = (t+1) % 10
-    for x in range(20):
-        ts.setTile(x,y,t)
-        s += str( ts.getTile(x,y) )+","
-    #print(s)
-    s=""
+for star in galaxy.stars:
+    if star.x < 0 or star.x > globals.GALAXY_LIMIT_X:
+        print("Star "+str(star.id) +" is out of bounds")
+    if star.y < 0 or star.y > globals.GALAXY_LIMIT_Y:
+        print("Star "+str(star.id) +" is out of bounds")
+
+    spec_index = SpectralIndex(star.spectralClass)
+
+    globals.ts.setTile(star.x, star.y, spec_index)
+
+globals.ts.setTile(1, 1, 1)
+
+
+"""
+PERLIN TEXTURE TEST
+"""
+"""
+#create perlin noise data for a texture
+noise = NoiseUtils.NoiseUtils(imageSize)
+noise.makeTexture(texture = noise.planetTexture)
+
+#transfer perlin data into a Surface
+perlinSurface = pygame.Surface((imageSize,imageSize)).convert()
+perlinSurface.fill((255,255,255))
+for y in range(imageSize):
+    for x in range(imageSize):
+        c = noise.img[x, y]
+        perlinSurface.set_at((x,y), (c,c,c,255))
+
+#pygame.image.save(perlinSurface, "planet.png")
+"""
 
 
 """ 
@@ -372,45 +435,62 @@ while True:
         elif event.type == KEYDOWN:
             if event.key == K_ESCAPE: sys.exit()
 
+            elif event.key==K_LEFT: 
+                globals.scrolldirx += -1
+                globals.scrollspeedx = 2.0
+
+            elif event.key==K_RIGHT: 
+                globals.scrolldirx += 1
+                globals.scrollspeedx = 2.0
+
+            elif event.key==K_UP:
+                globals.scrolldiry += -1
+                globals.scrollspeedy = 2.0
+
+            elif event.key==K_DOWN:
+                globals.scrolldiry += 1
+                globals.scrollspeedy = 2.0
+
+
         #send events to GUI
-        gui.process_events(event)
+        globals.gui.process_events(event)
         
         #handle all gui buttons
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
         
             #handle event to show messagebox
-            if event.ui_element == guibtn_test:
+            if event.ui_element == globals.guibtn_test:
                 msgbox = pygame_gui.windows.ui_message_window.UIMessageWindow(
                     rect=pygame.Rect((500,500),(200,160)),
                     html_message="This is a message box test",
-                    manager=gui,
+                    manager=globals.gui,
                     window_title="Message Test"
                 )
 
-            elif event.ui_element == guibtn_testsprite1:
-                star.alive = not star.alive 
-                if guiwin_sprite1.visible:
-                    guiwin_sprite1.hide()
+            elif event.ui_element == globals.guibtn_testsprite1:
+                star_sp.alive = not star_sp.alive 
+                if globals.guiwin_sprite1.visible:
+                    globals.guiwin_sprite1.hide()
                 else:
-                    guiwin_sprite1.show()
+                    globals.guiwin_sprite1.show()
 
-            elif event.ui_element == guibtn_testsprite2:
-                planet.alive = not planet.alive
-                if guiwin_sprite2.visible:
-                    guiwin_sprite2.hide()
+            elif event.ui_element == globals.guibtn_testsprite2:
+                planet_sp.alive = not planet_sp.alive
+                if globals.guiwin_sprite2.visible:
+                    globals.guiwin_sprite2.hide()
                 else:
-                    guiwin_sprite2.show()
+                    globals.guiwin_sprite2.show()
 
-            elif event.ui_element == guibtn_testsprite3:
+            elif event.ui_element == globals.guibtn_testsprite3:
                 srship.alive = not srship.alive
-                if guiwin_sprite3.visible:
-                    guiwin_sprite3.hide()
+                if globals.guiwin_sprite3.visible:
+                    globals.guiwin_sprite3.hide()
                 else:
-                    guiwin_sprite3.show()
+                    globals.guiwin_sprite3.show()
 
 
     #let the GUI perform updates
-    gui.update(0)
+    globals.gui.update(0)
 
     #handle input events
     pressed_keys = pygame.key.get_pressed()
@@ -427,10 +507,10 @@ while True:
     ENGINE RENDERING START
     """
     #clear the background
-    backbuffer.fill((60,60,60))
+    globals.backbuffer.fill((60,60,60))
 
     #reset debug text buffer
-    clear_debug_text(backbuffer)
+    clear_debug_text(globals.backbuffer)
 
     x,y = pygame.mouse.get_pos()
     add_debug_text("Mouse: " + str(x) + "," + str(y))
@@ -439,57 +519,70 @@ while True:
     #run some tests
 
     #star sprite test
-    if star.alive:
-        star.update(300)
-        guiimg_sprite1.set_image(star.image)
-        guilbl_sprite1.set_text( str(star) )
+    if star_sp.alive:
+        star_sp.update(300)
+        globals.guiimg_sprite1.set_image(star_sp.image)
+        globals.guilbl_sprite1.set_text( str(star_sp) )
 
     #planet sprite test
-    if planet.alive:
-        planet.update(400)
-        guiimg_sprite2.set_image(planet.image)
-        guilbl_sprite2.set_text( str(planet) )
+    if planet_sp.alive:
+        planet_sp.update(400)
+        globals.guiimg_sprite2.set_image(planet_sp.image)
+        globals.guilbl_sprite2.set_text( str(planet_sp) )
 
 
     #ship transforms test
     if srship.alive:
         angle = Engine.wrap_angle(angle+1)
-        scale += 0.0001 * sdir
-        if scale > 1.0 or scale < 0.5: sdir *= -1
+        scale += 0.001 * sdir
+        if scale > 0.6 or scale < 0.10: sdir *= -1
         srship.update(100)
 
         srship.scale_rotate(scale, angle, True)
 
-        guiimg_sprite3.set_image(srship.rotated_image)
-        guilbl_sprite3.set_text( str(srship) )
+        globals.guiimg_sprite3.set_image(srship.rotated_image)
+        globals.guilbl_sprite3.set_text( str(srship) )
 
+    """
+    test the tile scroller
+    """
+    sx = globals.scrollspeedx * globals.scrolldirx 
+    if not globals.ts.scroll(sx,0):
+        globals.scrolldirx = 0
 
-    #test the tile scroller
-    sx = scrollspeedx * scrolldirx
-    if not ts.scroll(sx,0):
-        scrolldirx *= -1
+    sy = globals.scrollspeedy * globals.scrolldiry 
+    if not globals.ts.scroll(0,sy):
+        globals.scrolldiry = 0
 
-    sy = scrollspeedy * scrolldiry 
-    if not ts.scroll(0,sy):
-        scrolldiry *= -1
+    globals.ts.updateScrollBuffer()
+    globals.ts.drawScrollWindow(globals.backbuffer, 790, 10, 800, 800)
+    posx,posy = globals.ts.scrollx, globals.ts.scrolly
+    globals.guilbl_space.set_text(str(globals.ts))
 
-    ts.updateScrollBuffer()
-    ts.drawScrollWindow(backbuffer, 750, 20, 800, 800)
-    pos = (ts.scrollx,ts.scrolly)
-    add_debug_text("ts: " + str(ts) )
 
 
     #draw Perlin generated texture
-    backbuffer.blit(perlinSurface, (470,500))
+    #backbuffer.blit(perlinSurface, (470,500))
+
+
+    #test the textured sphere
+    cx = 500; cy = 200
+    planetRotation += planetRotationSpeed
+    planetRotation = Engine.WrapValue(planetRotation, 0.0, 256.0)
+
+    #sphere.Draw( backbuffer, 0, 0, planetRotation, planetRadius, cx, cy )
+
+    #Engine.PrintText(backbuffer, fontt, (cx-50,cy+planetRadius+10), "PLANET RADIUS: " + str(planetRadius))
+    #Engine.PrintText(backbuffer, fontt, (cx-50,cy+planetRadius+30), "PLANET ROTATION: " + str(planetRotation))
 
 
 
-    game_update(backbuffer, 0)
+    game_update(globals.backbuffer, 0)
    
-    gui.draw_ui(backbuffer)
+    globals.gui.draw_ui(globals.backbuffer)
 
     #draw the back buffer
-    screen.blit(backbuffer, (0,0))
+    globals.screen.blit(globals.backbuffer, (0,0))
 
     pygame.display.update()
 

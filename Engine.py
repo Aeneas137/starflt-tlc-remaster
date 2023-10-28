@@ -75,13 +75,28 @@ def target_angle(x1,y1,x2,y2):
     angle_radians = math.atan2(delta_y,delta_x)
     angle_degrees = math.degrees(angle_radians)
     return angle_degrees
-    
-    
+
+
+def WrapValue(value:float, min:float=0.0, max:float=360.0):
+    """
+    Given a min-max range, this takes the value and wraps it as necessary to keep it within the range [min, max).
+    """
+    if min >= max: return max
+
+    if value < min:
+        value = max + math.fmod((value-min), (max-min))
+    elif value >= max:
+        value = math.fmod((value-min), (max-min))
+
+    return value
+
+
 def wrap_angle(angle):
     """ wraps a degree angle at boundary """
     return abs(angle % 360)
 
-def print_text(target, font, position, text, color=(255,255,255), center=False):
+
+def PrintText(target, font, position, text, color=(255,255,255), center=False):
     """ prints text with optional centering """
     x,y = position[0], position[1]
     imgText = font.render(text, True, color)
@@ -343,6 +358,8 @@ class Sprite(pygame.sprite.Sprite):
             pygame.draw.rect(dest_surface, self.DebugColor, rect, 1)
 
 
+    #this might need to be replaced with rotozoom
+
     def scale_rotate(self, percent_scale, deg_angle, use_smoothscale=False):
         """
         Draw the sprite with scaling and rotation by combining the transforms
@@ -365,6 +382,8 @@ class Sprite(pygame.sprite.Sprite):
         self.rotated_image = pygame.transform.rotate(self.scaled_image, deg_angle)
 
 
+
+    #this might need to be replaced with rotozoom
 
     def draw_scaled_rotated_image(self, dest_surface):
         """
