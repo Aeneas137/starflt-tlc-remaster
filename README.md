@@ -11,4 +11,4 @@ The old Allegro game engine in TLC works well but is difficult to deal with if a
 
 We need to start from scratch. There's no "upgrading from C++ to Python" here. The game will be rebuild from the ground up with Python.
 
-
+![ss6](https://github.com/Aeneas137/starflt-tlc-remaster/assets/46901366/e0f19723-45a1-4e04-9ddf-4387739f7f8a)
