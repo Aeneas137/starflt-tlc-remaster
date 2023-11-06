@@ -87,8 +87,7 @@ class TileScroller():
         r = self.getViewportSizeInPixels()
         ret = True 
 
-        x = int(x)
-        y = int(y)
+        x,y = int(x),int(y)
 
         if x < 0:
             if self.scrollx > 0+x:
@@ -97,7 +96,6 @@ class TileScroller():
             else:
                 #scroller hit west boundary
                 ret = False 
-
         if x > 0:
             if self.scrollx < w - r.width:
                 self.oldscrollx = self.scrollx 
@@ -105,7 +103,6 @@ class TileScroller():
             else:
                 #scroller hit east boundary
                 ret = False
-
         if y < 0:
             if self.scrolly > 0+y:
                 self.oldscrolly = self.scrolly 
@@ -113,7 +110,6 @@ class TileScroller():
             else:
                 #scroller hit north boundary
                 ret = False
-
         if y > 0:
             if self.scrolly < h - r.height:
                 self.oldscrolly = self.scrolly 
@@ -131,6 +127,12 @@ class TileScroller():
         self.scrollx = int(x)
         self.scrolly = int(y)
     
+
+    def setScrollPositionByTile(self, tilex, tiley):
+        x = tilex * self.tilewidth
+        y = tiley * self.tileheight
+        self.setScrollPosition(x,y)
+        
 
     def setMapSize(self, w, h):
         """ 
@@ -152,7 +154,9 @@ class TileScroller():
 
     def getTilebyCoords(self, x, y):
         """ """
-        return self.tiledata[x / self.tilewidth][y / self.tileheight]
+        ix = int(x / self.tilewidth)
+        iy = int(y / self.tileheight)
+        return self.tiledata[ix][iy]
     
 
     def loadTilemapSourceImage(self, filename, columns):

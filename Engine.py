@@ -26,7 +26,14 @@ from pygame.locals import *
 PI = 3.1415926535
 PI_div_180 = 0.017453292519444
 
+#this is a 1-second timer used to calculate framerate
+TIMER_EVENT_FRAMERATE = 1001
+frameRate:int = 0
+deltaTime:float = 0.0
+frames = 0
+ms = 0
 
+clock = pygame.time.Clock()
 
 """
 RGB color class to pack colors into an integer\n
@@ -35,7 +42,7 @@ color = toint32(rgb)\n
 rgb_c = torgb(color)
 """
 
-def rgbtoint32(self, rgb):
+def rgbtoint32(rgb):
     color = 0
     for c in rgb[::-1]:
         color = (color<<8) + c
@@ -47,6 +54,15 @@ def int32torgb(color):
         rgb.append(color&0xff)
         color = color >> 8
     return rgb
+
+
+def get_ticks()->int:
+    """
+    get_ticks: returns run time in ms since game started
+    """
+    t = pygame.time.get_ticks()
+    return t
+
 
 
 def distance(point1, point2):

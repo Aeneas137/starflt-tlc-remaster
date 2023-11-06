@@ -37,13 +37,6 @@ class Globals():
         self.SCREENW:int=0
         self.SCREENH:int=0
 
-        self.noise = None 
-        self.pixels = None
-        self.perlinSurface:pygame.Surface=None
-        self.perlinTexSize = 256
-        self.sphere:TexturedSphere.TexturedSphere = None 
-        self.sphereImg:pygame.Surface = None 
-
         self.running=False
         self.screen=None
         self.backbuffer=None
@@ -78,6 +71,15 @@ class Globals():
         self.guiwin_sprite3:pygame_gui.elements.UIWindow=None
         self.guiimg_sprite3:pygame_gui.elements.UIImage=None 
         self.guilbl_sprite3:pygame_gui.elements.UILabel=None 
+
+        #planet rendering
+        self.noise = None 
+        self.pixels = None
+        self.perlinSurface:pygame.Surface=None
+        self.perlinTexSize = 256
+        self.sphere:TexturedSphere.TexturedSphere = None 
+        self.sphereImg:pygame.Surface = None 
+
 
 
 globals:Globals = Globals()
@@ -118,12 +120,17 @@ def engine_init():
     
     #this avoids slow font scaling (add more if needed)
     globals.fontl = pygame.font.SysFont("arial", size=24, bold=True)
-    globals.fonts = pygame.font.SysFont("arial", size=16, bold=False)
+    globals.fonts = pygame.font.SysFont("arial", size=18, bold=False)
     globals.fontt = pygame.font.SysFont("arial", size=12, bold=False)
 
     pygame.mouse.set_visible(True)
 
-    globals.timer = pygame.time.Clock()
+    #start the framerate timer running
+    pygame.time.set_timer(Engine.TIMER_EVENT_FRAMERATE, 1000)
+
+    #initialize keyboard input
+    pygame.key.set_repeat(10,100)
+
 
 
 def gameplay_init():
@@ -335,7 +342,7 @@ angle = 1
 """
 test the textured sphere
 """
-image_file = "molten_128.png"
+image_file = "molten_256.png"
 globals.sphere = TexturedSphere.TexturedSphere()
 if not globals.sphere.LoadTexture(image_file): 
     print("Error loading " + image_file)
@@ -346,7 +353,7 @@ planetRotation = 0.0
 planetRadius = 64
 planetTicks = 0
 planetLastTicks = 0
-planetDelay = 200
+planetDelay = 100
 #the +6 is due to edges in the sphere map
 globals.sphereImg = pygame.Surface((planetRadius*2+6,planetRadius*2+6)).convert_alpha()
 #globals.sphereImg.set_alpha(0xff)
@@ -390,7 +397,8 @@ for star in galaxy.stars:
 
     globals.ts.setTile(star.x, star.y, spec_index)
 
-globals.ts.setTile(1, 1, 1)
+#starting scroll position at home system
+globals.ts.setScrollPositionByTile(122,100)
 
 
 """
@@ -425,9 +433,9 @@ ENGINE MAIN LOOP
 -----------------------------------------------
 """
 while True:
-    globals.timer.tick(60)
-    ticks = pygame.time.get_ticks()
-    timeDelta = globals.clock.tick(60)/1000.0
+    Engine.ms = globals.clock.tick_busy_loop(0)
+    Engine.deltaTime = Engine.ms / 60
+    Engine.frames += 1
 
     """
     ENGINE INPUT/GUI HANDLER START
@@ -435,25 +443,30 @@ while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
 
+        #used to calculate framerate
+        elif event.type == Engine.TIMER_EVENT_FRAMERATE:
+            Engine.frameRate = Engine.frames 
+            Engine.frames = 0
+
         #handle key input events
         elif event.type == KEYDOWN:
             if event.key == K_ESCAPE: sys.exit()
-
             elif event.key==K_LEFT: 
                 globals.scrolldirx += -1
                 globals.scrollspeedx = 2.0
-
             elif event.key==K_RIGHT: 
                 globals.scrolldirx += 1
                 globals.scrollspeedx = 2.0
-
             elif event.key==K_UP:
                 globals.scrolldiry += -1
                 globals.scrollspeedy = 2.0
-
             elif event.key==K_DOWN:
                 globals.scrolldiry += 1
                 globals.scrollspeedy = 2.0
+            elif event.key==K_SPACE:
+                globals.ts.setScrollPositionByTile(122,100)
+
+
 
         #handle gui button events
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
@@ -468,20 +481,17 @@ while True:
                     manager=globals.gui,
                     window_title="Message Test"
                 )
-
             elif button.text == "Star Sprite":
                 star_sp.alive = not star_sp.alive 
                 if globals.guiwin_sprite1.visible:
                     globals.guiwin_sprite1.hide()
                 else:
                     globals.guiwin_sprite1.show()
-
             elif button.text == "Planet Sprite":
                 if globals.guiwin_sprite2.visible:
                     globals.guiwin_sprite2.hide()
                 else:
                     globals.guiwin_sprite2.show()
-
             elif button.text == "Ship Transforms":
                 srship.alive = not srship.alive
                 if globals.guiwin_sprite3.visible:
@@ -493,7 +503,7 @@ while True:
         globals.gui.process_events(event)
 
     #give gui some energy
-    globals.gui.update(timeDelta)
+    globals.gui.update(Engine.deltaTime)
 
 
     #handle input events
@@ -516,8 +526,8 @@ while True:
     #reset debug text buffer
     clear_debug_text(globals.backbuffer)
 
-    x,y = pygame.mouse.get_pos()
-    add_debug_text("Mouse: " + str(x) + "," + str(y))
+    mx,my = pygame.mouse.get_pos()
+    add_debug_text("Mouse: " + str(mx) + "," + str(my))
 
 
     #run some tests
@@ -552,9 +562,11 @@ while True:
     if not globals.ts.scroll(0,sy):
         globals.scrolldiry = 0
 
+    #this can be optimized by only updating the buffer when the tile boundary is reached
     globals.ts.updateScrollBuffer()
+
     globals.ts.drawScrollWindow(globals.backbuffer, 790, 10, 800, 800)
-    posx,posy = globals.ts.scrollx, globals.ts.scrolly
+    #posx,posy = globals.ts.scrollx, globals.ts.scrolly
     globals.guilbl_space.set_text(str(globals.ts))
 
 
@@ -568,23 +580,50 @@ while True:
     t = "RAD " + str(planetRadius) + ", ROT " + str(planetRotation)
     globals.guilbl_sprite2.set_text(t)
 
-    planetTicks = pygame.time.get_ticks()
-    if planetTicks > planetLastTicks + planetDelay:
-        planetLastTicks = planetTicks
+    if globals.guiwin_sprite2.visible:
+        if Engine.get_ticks() > planetLastTicks + planetDelay:
+            planetLastTicks = Engine.get_ticks()
 
-        planetRotation += planetRotationSpeed
-        planetRotation = Engine.WrapValue(planetRotation, 0.0, 256.0)
+            planetRotation += 2.0 # planetRotationSpeed
+            planetRotation = Engine.WrapValue(planetRotation, 0.0, 256.0)
 
-        cx = cy = globals.sphereImg.get_width()/2
-        globals.sphere.Draw( globals.sphereImg, 0, 0, planetRotation, planetRadius, cx,cy )
-        globals.guiimg_sprite2.set_image(globals.sphereImg)
+            cx = cy = globals.sphereImg.get_width()/2
+            globals.sphere.Draw( globals.sphereImg, 0, 0, planetRotation, planetRadius, cx,cy )
+            globals.guiimg_sprite2.set_image(globals.sphereImg)
 
 
 
-    game_update(globals.backbuffer, 0)
+    game_update(globals.backbuffer, Engine.deltaTime)
    
     #draw the gui
     globals.gui.draw_ui(globals.backbuffer)
+
+
+    mx,my = pygame.mouse.get_pos()
+    if mx > 790 and mx < 790+800 and my > 10 and my < 10+800:
+        relx,rely = mx - 790, my - 10
+        sx,sy = globals.ts.scrollx + relx, globals.ts.scrolly + rely 
+        tile = globals.ts.getTilebyCoords(sx,sy)
+        tx,ty = int(sx / globals.ts.tilewidth), int(sy / globals.ts.tileheight)
+        t = str(tx) + "," + str(ty)
+        t += ",TILE " + str(tile)
+
+        for star in galaxy.stars:
+            if star.x == tx and star.y == ty:
+                t += ",STAR " + star.name
+                break 
+
+        Engine.PrintText(globals.backbuffer, globals.fonts, (mx,my+40), t, '#ffffff')
+
+
+
+
+    #print the framerate
+    x,y = globals.SCREENW-100,globals.SCREENH-20
+    fps = str(int(Engine.frameRate))
+    t = "FPS " + fps + " ({:.2f}".format(Engine.deltaTime) + ")"
+    Engine.PrintText(globals.backbuffer, globals.fonts, (x,y), t, '#cc8800')
+
 
     #draw the back buffer
     globals.screen.blit(globals.backbuffer, (0,0))
