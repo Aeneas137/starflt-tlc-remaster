@@ -342,6 +342,7 @@ angle = 1
 """
 test the textured sphere
 """
+"""
 image_file = "molten_256.png"
 globals.sphere = TexturedSphere.TexturedSphere()
 if not globals.sphere.LoadTexture(image_file): 
@@ -359,6 +360,7 @@ globals.sphereImg = pygame.Surface((planetRadius*2+6,planetRadius*2+6)).convert_
 #globals.sphereImg.set_alpha(0xff)
 #globals.sphereImg.set_colorkey('#ff00ff')
 #globals.sphereImg.fill('#ff00ff')
+"""
 
 
 """
@@ -577,6 +579,7 @@ while True:
     """
     planet rotation test
     """
+    """
     t = "RAD " + str(planetRadius) + ", ROT " + str(planetRotation)
     globals.guilbl_sprite2.set_text(t)
 
@@ -590,7 +593,7 @@ while True:
             cx = cy = globals.sphereImg.get_width()/2
             globals.sphere.Draw( globals.sphereImg, 0, 0, planetRotation, planetRadius, cx,cy )
             globals.guiimg_sprite2.set_image(globals.sphereImg)
-
+    """
 
 
     game_update(globals.backbuffer, Engine.deltaTime)
