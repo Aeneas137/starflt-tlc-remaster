@@ -13,7 +13,7 @@ import sys, time, random, math, pygame
 from pygame.locals import *
 from array import *
 
-MAX = 500
+MAX = 256
 
 class TileScroller():
     """
@@ -208,6 +208,7 @@ class TileScroller():
         This is memory efficient since only the viewport is filled,  but this should only be
         called when the scroll position moves past one of the edges (viewport + tile w/h).
         At minimum, for efficiency, only rebuild the scroll buffer when the scroll position changes.
+        (This is not done automatically...yet)
         """
         #prevent a crash
         if self.scrollbuffer==None: return False 
@@ -270,9 +271,9 @@ class TileScroller():
         s+= str(self.scrollx) + "/" + str(self.scrolly) + " "
         tpx,tpy = int(self.scrollx / self.tilewidth), int(self.scrolly / self.tileheight)
         s+= " ("+ str(tpx) + "/" + str(tpy) + ") "
-        s+= "tile:" + str(self.tilewidth) + "/" + str(self.tileheight) + " "
-        s+= "win:"+str(self.windowwidth) + "/" + str(self.windowheight) + " "
-        s+= "map:" + str(self.mapwidth) + "/" + str(self.mapheight) + " "
-        s+= "sb:" + str(self.scrollbuffer.get_width()) + "/" + str(self.scrollbuffer.get_height()) + " "
+        #s+= "tile:" + str(self.tilewidth) + "/" + str(self.tileheight) + " "
+        #s+= "win:"+str(self.windowwidth) + "/" + str(self.windowheight) + " "
+        #s+= "map:" + str(self.mapwidth) + "/" + str(self.mapheight) + " "
+        #s+= "sb:" + str(self.scrollbuffer.get_width()) + "/" + str(self.scrollbuffer.get_height()) + " "
         
         return s 

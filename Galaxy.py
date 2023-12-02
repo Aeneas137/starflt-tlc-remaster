@@ -352,7 +352,20 @@ class Star:
         self.luminosity = other.luminosity
 
 
-    def GetNumPlanets(self)->int:
+    def get_color(self):
+        color = (255,255,255)
+        match self.spectralClass:
+            case 'M': color=(255,255,255)
+            case 'K': color=(165,255,255)
+            case 'G': color=(255,255,100)
+            case 'F': color=(255,160,20)
+            case 'A': color=(190,90,220)
+            case 'B': color=(255,64,64)
+            case 'O': color=(10,40,255)
+        return color 
+    
+
+    def get_num_planets(self)->int:
         return self.totalPlanets
 
 
@@ -405,218 +418,5 @@ class Galaxy:
             
         
         return True 
-
-"""
-        TiXmlElement * galaxy = doc.FirstChildElement("galaxy");
-        if (galaxy == NULL)
-            return false;
-
-        // load all stars first, since the planets reference them
-        TiXmlElement * star = galaxy->FirstChildElement("star");
-        while (star != NULL)
-        {
-            Star newStar;
-            TiXmlHandle starHandle(star);
-
-            TiXmlText * text;
-
-            text = starHandle.FirstChild("id").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.id = atoi(text->Value());
-            }
-
-            text = starHandle.FirstChild("name").FirstChild().Text();
-            if (text == NULL)
-                newStar.name = "";
-            else
-                newStar.name = text->Value();
-
-            text = starHandle.FirstChild("x").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.x = atoi(text->Value());
-            }
-
-            text = starHandle.FirstChild("y").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.y = atoi(text->Value());
-            }
-
-            text = starHandle.FirstChild("spectralclass").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.spectralClass = Star::SpectralClassFromString(text->Value());
-            }
-
-            text = starHandle.FirstChild("color").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.color = text->Value();
-            }
-
-            text = starHandle.FirstChild("temperature").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.temperature = atol(text->Value());
-            }
-
-            text = starHandle.FirstChild("mass").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.mass = atol(text->Value());
-            }
-
-            text = starHandle.FirstChild("radius").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.radius = atol(text->Value());
-            }
-
-            text = starHandle.FirstChild("luminosity").FirstChild().Text();
-            if (text != NULL)
-            {
-                newStar.luminosity = atol(text->Value());
-            }
-
-            // make sure a star with this ID doesn't already exist
-            Star * existingStar = GetStarByID(newStar.id);
-            if (existingStar == NULL)
-            {
-                // add the star
-                Star * toAdd = new Star(newStar);
-                stars.push_back(toAdd);
-                starsByID[newStar.id] = toAdd;
-                starsByLocation[make_pair(newStar.x,newStar.y)] = toAdd;
-            }
-
-            star = star->NextSiblingElement("star");
-        }
-
-        // now load all planets
-        TiXmlElement * planet = galaxy->FirstChildElement("planet");
-        while (planet != NULL)
-        {
-        Planet newPlanet;
-        TiXmlHandle planetHandle(planet);
-
-        TiXmlText * text;
-
-        text = planetHandle.FirstChild("id").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.id = atoi(text->Value());
-        }
-
-        text = planetHandle.FirstChild("hoststar").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.hostStarID = atoi(text->Value());
-        }
-
-        text = planetHandle.FirstChild("name").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.name = text->Value();
-        }
-
-        text = planetHandle.FirstChild("size").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.size = Planet::PlanetSizeFromString(text->Value());
-        }
-
-        text = planetHandle.FirstChild("type").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.type = Planet::PlanetTypeFromString(text->Value());
-        }
-
-        text = planetHandle.FirstChild("color").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.color = text->Value();
-        }
-
-        text = planetHandle.FirstChild("temperature").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.temperature = Planet::PlanetTemperatureFromString(text->Value());
-        }
-
-        text = planetHandle.FirstChild("gravity").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.gravity = Planet::PlanetGravityFromString(text->Value());
-        }
-
-        text = planetHandle.FirstChild("atmosphere").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.atmosphere = Planet::PlanetAtmosphereFromString(text->Value());
-        }
-
-        text = planetHandle.FirstChild("weather").FirstChild().Text();
-        if (text != NULL)
-        {
-            newPlanet.weather = Planet::PlanetWeatherFromString(text->Value());
-        }
-
-        //added to prevent landing on homeworlds
-        newPlanet.landable = true;
-        text = planetHandle.FirstChild("landable").FirstChild().Text();
-        if (text != NULL) {
-            string str = Util::ToString(text->Value());
-            //all planets are landable unless otherwise specified in galaxy data
-            if (str == "false") newPlanet.landable = false;
-        }
-
-        //sanity checks
-        if ( newPlanet.size        == PS_INVALID   ||
-                newPlanet.type        == PT_INVALID   ||
-                newPlanet.temperature == PTMP_INVALID ||
-                newPlanet.gravity     == PG_INVALID   ||
-                newPlanet.atmosphere  == PA_INVALID )
-        {
-                std::string msg = "loadGalaxy: error loading planet #" + newPlanet.id;
-                msg += " , name -- " + newPlanet.name + " --";
-                msg += " , size " + Planet::PlanetSizeToString(newPlanet.size);
-                msg += " , type " + Planet::PlanetTypeToString(newPlanet.type);
-                msg += " , temperature " + Planet::PlanetTemperatureToString(newPlanet.temperature);
-                msg += " , gravity " + Planet::PlanetGravityToString(newPlanet.gravity);
-                msg += " , atmosphere " + Planet::PlanetAtmosphereToString(newPlanet.atmosphere);
-                msg += "\n";
-                TRACE(msg.c_str());
-                ASSERT(0);
-        }
-
-        // make sure the host star does exist
-        Star * hostStar = GetStarByID(newPlanet.hostStarID);
-        if (hostStar != NULL)
-        {
-            // make sure a planet with this ID doesn't already exist in the host star
-            Planet * existingPlanet = hostStar->GetPlanetByID(newPlanet.id);
-            if (existingPlanet == NULL)
-            {
-            // add the planet to the host star
-            Planet * toAdd = new Planet(newPlanet);
-            hostStar->planets.push_back(toAdd);
-            hostStar->planetsByID[newPlanet.id] = toAdd;
-            }
-        }
-
-
-        // add to the large list of all planets (not bound by host star)
-        Planet * toAdd = new Planet(newPlanet);
-        allPlanets.push_back(toAdd);
-        allPlanetsByID[newPlanet.id] = toAdd;
-
-
-            planet = planet->NextSiblingElement("planet");
-        }
-
-        return true;
-"""
 
 #endregion
